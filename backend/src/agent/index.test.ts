@@ -52,6 +52,14 @@ describe("agent.drain", () => {
     expect(sent[0].text).toBe("[❤️ REACTION] Sam");
   });
 
+  it("adds the Join link to brushing-now messages", async () => {
+    const { agent, sent, enqueue } = setup();
+    const body = "[🪥 BRUSHING NOW] Sahmey is brushing right now.";
+    enqueue({ userId: "u", channel: "imessage", address: SAM, kind: "presence_proactive", body, checkInId: null });
+    await agent.drain();
+    expect(sent[0].text).toBe(`${body} Join → http://localhost:5173/brush`);
+  });
+
   it("falls back to the database text if the check-in is gone", async () => {
     const { agent, sent, enqueue } = setup();
     enqueue({ ...checkInMsg(SAM), checkInId: "deleted" });

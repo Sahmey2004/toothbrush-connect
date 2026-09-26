@@ -22,12 +22,20 @@ export interface AgentDeps {
 
 export function createAgent({ provider, outbox, inbox, links, log = console.log }: AgentDeps) {
   const handleInbound = createInboundHandler({ provider, inbox, links });
-  // Check-ins are re-rendered with our templates (label + link, FR-D3); other kinds go out as the database
-  // wrote them.
+  // Check-ins are re-rendered with our templates and brushing-now gets its Join link (FR-D3: label first, link
+  // last); other kinds go out as the database wrote them.
   async function textFor(m: OutboxMessage): Promise<string> {
-    if (m.kind !== "check_in" || !m.checkInId) return m.body;
-    const checkIn = await outbox.getCheckIn(m.checkInId, m.userId);
-    return checkIn ? renderUpdate(checkIn, links.checkIn(m.checkInId, m.userId)) : m.body;
+    switch (m.kind) {
+      case "check_in": {
+        const checkIn = m.checkInId ? await outbox.getCheckIn(m.checkInId, m.userId) : null;
+        return checkIn ? renderUpdate(checkIn, links.checkIn(checkIn.id, m.userId)) : m.body;
+      }
+      case "presence":
+      case "presence_proactive":
+        return `${m.body} Join → ${links.page("/brush")}`;
+      default:
+        return m.body;
+    }
   }
 
   async function sendOne(m: OutboxMessage): Promise<SendReport> {
