@@ -1,4 +1,11 @@
-// Top-level router: see ./routes.tsx.
+import { RouterProvider } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthProvider";
+import { router } from "./routes";
+
 export default function App() {
-  return null;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
