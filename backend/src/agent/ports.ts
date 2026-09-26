@@ -1,9 +1,23 @@
-// What the agent needs from the rest of the backend. The backend owners implement these; fakes.ts has
-// in-memory versions for tests and dev.ts.
+// What the agent needs from the rest of the backend. supabase.ts implements these against the database;
+// fakes.ts has in-memory versions for tests and dev.ts.
 import type { Mood, Scope } from "../domain/moods.js";
+import type { Channel } from "./providers/types.js";
 import type { AudienceLabel } from "./templates/labels.js";
 
-// A check-in whose 30 s hold has ended, as the recipients will see it.
+// A row of `outbound_messages`: the database queues every message the agent sends (README "Messaging agent").
+export interface OutboxMessage {
+  id: number;
+  userId: string;
+  channel: Channel;
+  address: string;
+  kind: string; // check_in, reaction, reply, invite, done, …
+  body: string; // text written by the database
+  checkInId: string | null;
+}
+
+export type SendReport = { ok: true; providerMessageId: string } | { ok: false; error: string };
+
+// A delivered check-in as one recipient sees it.
 export interface DeliverableCheckIn {
   id: string;
   authorName: string;
@@ -13,29 +27,17 @@ export interface DeliverableCheckIn {
   audience: AudienceLabel;
 }
 
-export interface Recipient {
-  userId: string;
-  // E.164 phone for iMessage; null when the user has no phone or receives on the website only.
-  phone: string | null;
-  // Texted STOP (FR-D6).
-  optedOut: boolean;
-}
-
-export interface DeliveryKey {
-  checkInId: string;
-  recipientId: string;
-}
-
-// One row per (check-in, recipient), e.g. `outbound_messages` with its unique index.
-export interface DeliveryLog {
-  // Reserve the send. False if it was already sent, is in flight, or failed permanently, so retries never
-  // send twice. A retryable failure can be claimed again.
-  claim(key: DeliveryKey): Promise<boolean>;
-  markSent(key: DeliveryKey, providerMessageId: string): Promise<void>;
-  markFailed(key: DeliveryKey, failure: { error: string; retryable: boolean }): Promise<void>;
+export interface Outbox {
+  // `claim_outbound`: due, pending messages, marked in flight so no other run sends them. Skips opted-out
+  // addresses.
+  claim(limit: number): Promise<OutboxMessage[]>;
+  // `complete_outbound`: sent, or back to pending for a retry (the database gives up after 3 attempts).
+  complete(id: number, report: SendReport): Promise<void>;
+  // The check-in behind a `check_in` message, for rendering with our templates. Null if it's gone.
+  getCheckIn(checkInId: string, recipientId: string): Promise<DeliverableCheckIn | null>;
 }
 
 export interface LinkBuilder {
-  // Link that opens this check-in on the website for this recipient (a magic link once FR-W7 exists).
-  checkIn(key: DeliveryKey): Promise<string>;
+  // Where a check-in message links on the website (a magic link once FR-W7 exists).
+  checkIn(checkInId: string, recipientId: string): string;
 }

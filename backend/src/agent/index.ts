@@ -1,55 +1,66 @@
-// Messaging agent: when a check-in's hold ends, send each recipient the labelled update through Photon.
-// The website feed is delivered separately; a failure here never affects it.
+// Messaging agent: drains the database's outbox (`outbound_messages`) and sends each message through Photon.
+// The website feed is delivered by the database separately; a failure here never affects it.
+import { setTimeout as sleep } from "node:timers/promises";
 import { loadAgentConfig, type AgentConfig } from "./config.js";
-import type { DeliverableCheckIn, DeliveryLog, LinkBuilder, Recipient } from "./ports.js";
+import type { LinkBuilder, Outbox, OutboxMessage, SendReport } from "./ports.js";
 import { connectIMessage, createIMessageProvider } from "./providers/imessage.js";
 import { createTerminalProvider } from "./providers/terminal.js";
-import { RecipientNotReachable, type MessagingProvider } from "./providers/types.js";
+import type { MessagingProvider } from "./providers/types.js";
 import { renderUpdate } from "./templates/messages.js";
 
 export type * from "./ports.js";
 
-export type DeliveryOutcome =
-  | { recipientId: string; status: "sent"; providerMessageId: string }
-  | { recipientId: string; status: "skipped"; reason: "no_phone" | "opted_out" | "already_sent" }
-  | { recipientId: string; status: "failed"; error: string; retryable: boolean };
-
 export interface AgentDeps {
   provider: MessagingProvider;
-  deliveries: DeliveryLog;
+  outbox: Outbox;
   links: LinkBuilder;
+  log?: (line: string) => void;
 }
 
-export function createAgent({ provider, deliveries, links }: AgentDeps) {
-  async function deliverOne(checkIn: DeliverableCheckIn, r: Recipient): Promise<DeliveryOutcome> {
-    const recipientId = r.userId;
-    if (r.optedOut) return { recipientId, status: "skipped", reason: "opted_out" };
-    if (!r.phone) return { recipientId, status: "skipped", reason: "no_phone" };
+export function createAgent({ provider, outbox, links, log = console.log }: AgentDeps) {
+  // Check-ins are re-rendered with our templates (label + link, FR-D3); other kinds go out as the database
+  // wrote them.
+  async function textFor(m: OutboxMessage): Promise<string> {
+    if (m.kind !== "check_in" || !m.checkInId) return m.body;
+    const checkIn = await outbox.getCheckIn(m.checkInId, m.userId);
+    return checkIn ? renderUpdate(checkIn, links.checkIn(m.checkInId, m.userId)) : m.body;
+  }
 
-    const key = { checkInId: checkIn.id, recipientId };
-    if (!(await deliveries.claim(key))) return { recipientId, status: "skipped", reason: "already_sent" };
-
+  async function sendOne(m: OutboxMessage): Promise<SendReport> {
+    if (m.channel !== provider.channel) return { ok: false, error: `no ${m.channel} provider` };
     try {
-      const text = renderUpdate(checkIn, await links.checkIn(key));
-      const { providerMessageId } = await provider.send(r.phone, text);
-      await deliveries.markSent(key, providerMessageId);
-      return { recipientId, status: "sent", providerMessageId };
+      const { providerMessageId } = await provider.send(m.address, await textFor(m));
+      return { ok: true, providerMessageId };
     } catch (e) {
-      const error = e instanceof Error ? e.message : String(e);
-      const retryable = !(e instanceof RecipientNotReachable);
-      await deliveries.markFailed(key, { error, retryable });
-      return { recipientId, status: "failed", error, retryable };
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   }
 
+  // Send everything that's due, one message at a time, to stay well inside Photon's rate limits.
+  async function drain(limit = 50): Promise<{ message: OutboxMessage; report: SendReport }[]> {
+    const results = [];
+    for (const message of await outbox.claim(limit)) {
+      const report = await sendOne(message);
+      await outbox.complete(message.id, report);
+      log(`${report.ok ? "sent" : "failed"} #${message.id} ${message.kind} → ${message.address}${report.ok ? "" : `: ${report.error}`}`);
+      results.push({ message, report });
+    }
+    return results;
+  }
+
   return {
-    // Call once the hold has ended and the check-in is in the recipients' feeds. Safe to call again for
-    // the same check-in: recipients already sent to are skipped.
-    async deliverCheckIn(checkIn: DeliverableCheckIn, recipients: Recipient[]): Promise<DeliveryOutcome[]> {
-      const outcomes: DeliveryOutcome[] = [];
-      // One at a time, to stay well inside Photon's rate limits.
-      for (const r of recipients) outcomes.push(await deliverOne(checkIn, r));
-      return outcomes;
+    drain,
+
+    // Poll the outbox until `signal` aborts. The database's cron delivers held check-ins every 5 s.
+    async run({ intervalMs = 2000, signal }: { intervalMs?: number; signal?: AbortSignal } = {}) {
+      while (!signal?.aborted) {
+        try {
+          await drain();
+        } catch (e) {
+          log(`outbox poll failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        await sleep(intervalMs, undefined, { signal }).catch(() => {});
+      }
     },
 
     stop: () => provider.stop(),
