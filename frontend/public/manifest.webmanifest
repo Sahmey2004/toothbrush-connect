@@ -2,5 +2,7 @@
   "name": "Toothbrush Connect",
   "short_name": "Brush",
   "start_url": "/brush",
-  "display": "standalone"
+  "display": "standalone",
+  "background_color": "#EEF4F2",
+  "theme_color": "#0E3B39"
 }
