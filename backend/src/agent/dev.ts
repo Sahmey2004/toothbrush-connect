@@ -1,12 +1,13 @@
-// Manual check without the database: queue one check-in message for a phone and send it with the provider
-// AGENT_MODE picks.
-//   npx tsx --env-file=.env src/agent/dev.ts                          # terminal (default)
-//   AGENT_MODE=photon npx tsx --env-file=.env src/agent/dev.ts +1…     # live iMessage to that phone
-// The phone must have texted the Photon line first, or Photon refuses the send.
+// Manual check without the database: send one message to a phone with the provider AGENT_MODE picks.
+//   npx tsx --env-file=.env src/agent/dev.ts                                  # sample check-in, terminal
+//   AGENT_MODE=photon npx tsx --env-file=.env src/agent/dev.ts +1…             # sample check-in, live iMessage
+//   AGENT_MODE=photon npx tsx --env-file=.env src/agent/dev.ts welcome +1…     # welcome text, live iMessage
+// The phone must be on the Photon project's Users list, or Photon refuses the send.
 import { createFakeInbox, createFixedLinks, createMemoryOutbox } from "./fakes.js";
 import { createAgent, createProvider } from "./index.js";
 
-const phone = process.argv[2] ?? "+15550000000";
+const welcome = process.argv[2] === "welcome";
+const phone = process.argv[welcome ? 3 : 2] ?? "+15550000000";
 
 const { outbox, enqueue } = createMemoryOutbox({
   "dev-check-in": {
@@ -27,7 +28,8 @@ const agent = createAgent({
   links: createFixedLinks(),
 });
 try {
-  await agent.drain();
+  if (welcome) await agent.sendWelcome(phone);
+  else await agent.drain();
 } finally {
   await agent.stop();
 }

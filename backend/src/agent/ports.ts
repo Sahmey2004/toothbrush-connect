@@ -65,9 +65,10 @@ export interface Inbox {
   }): Promise<InboundResult>;
 }
 
-// Phone numbers the agent should be able to message: iMessage rows of `channel_identities`.
+// Phone numbers the agent should be able to message: iMessage rows of `channel_identities`. `verified` means
+// the user proved the number (phone sign-in, or texted the line); invited friends aren't verified yet.
 export interface ContactDirectory {
-  listPhones(): Promise<{ phone: string; name: string | null }[]>;
+  listPhones(): Promise<{ phone: string; name: string | null; verified: boolean }[]>;
 }
 
 // The provider's list of allowed numbers (Photon project Users). True if the phone was newly added.

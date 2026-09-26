@@ -13,6 +13,7 @@ import {
   renderPostOnWeb,
   renderStarted,
   renderStopped,
+  renderWelcome,
   renderReaction,
   renderReply,
   renderUpdate,
@@ -60,6 +61,7 @@ const samples: [string, string][] = [
   ["nothing pending", renderNothingPending(LINK)],
   ["joined", renderJoined({ inviterNames: ["Sahmey"] }, LINK)],
   ["joined, no names", renderJoined({ inviterNames: [] }, LINK)],
+  ["welcome", renderWelcome(LINK)],
 ];
 
 describe("FR-D3 lint: every template starts with a catalog label and ends with a link", () => {

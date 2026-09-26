@@ -9,7 +9,7 @@ import { connectIMessage, createIMessageProvider } from "./providers/imessage.js
 import { createPhotonUsers, noContactRegistry } from "./providers/photon-users.js";
 import { createTerminalProvider } from "./providers/terminal.js";
 import type { MessagingProvider } from "./providers/types.js";
-import { renderUpdate } from "./templates/messages.js";
+import { renderUpdate, renderWelcome } from "./templates/messages.js";
 
 export type * from "./ports.js";
 
@@ -43,19 +43,36 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
     }
   }
 
-  async function register(phone: string, name?: string | null) {
-    if (!contacts) return;
+  // True if the phone was newly added to Photon's Users.
+  async function register(phone: string, name?: string | null): Promise<boolean> {
+    if (!contacts) return false;
     try {
-      if (await contacts.registry.ensure(phone, name)) log(`registered ${phone} with Photon`);
+      const added = await contacts.registry.ensure(phone, name);
+      if (added) log(`registered ${phone} with Photon`);
+      return added;
     } catch (e) {
       log(`registering ${phone} with Photon failed: ${errorText(e)}`);
+      return false;
     }
   }
 
-  // Add every phone in the database to Photon's Users, e.g. right after someone signs up or is invited.
+  // Starts the thread on the user's Photon line, so they never need to know which number to text.
+  async function sendWelcome(phone: string) {
+    try {
+      await provider.send(phone, renderWelcome(links.page("/timeline")));
+      log(`welcomed ${phone}`);
+    } catch (e) {
+      log(`welcome to ${phone} failed: ${errorText(e)}`);
+    }
+  }
+
+  // Add every phone in the database to Photon's Users, e.g. right after someone signs up or is invited, and
+  // welcome people who signed up with their own phone. Invited friends get their invite instead.
   async function syncContacts() {
     if (!contacts) return;
-    for (const c of await contacts.directory.listPhones()) await register(c.phone, c.name);
+    for (const c of await contacts.directory.listPhones()) {
+      if ((await register(c.phone, c.name)) && c.verified) await sendWelcome(c.phone);
+    }
   }
 
   async function sendOne(m: OutboxMessage): Promise<SendReport> {
@@ -84,6 +101,7 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
   return {
     drain,
     syncContacts,
+    sendWelcome,
 
     // Poll the outbox until `signal` aborts (the database's cron delivers held check-ins every 5 s), and sync
     // contacts with Photon every `syncEveryMs`.

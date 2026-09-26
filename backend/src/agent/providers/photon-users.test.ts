@@ -71,8 +71,9 @@ describe("agent contact sync", () => {
       contacts: {
         directory: {
           listPhones: async () => [
-            { phone: "+17634060903", name: "Hwaejin" },
-            { phone: "+13145550101", name: "Sam" },
+            { phone: "+17634060903", name: "Hwaejin", verified: true },
+            { phone: "+13145550101", name: "Sam", verified: true },
+            { phone: "+13145550102", name: "Invited Ravi", verified: false },
           ],
         },
         registry: createPhotonUsers(photon, api.fetchImpl),
@@ -85,8 +86,17 @@ describe("agent contact sync", () => {
   it("adds every phone in the database that Photon doesn't have yet", async () => {
     const { agent, api } = setup();
     await agent.syncContacts();
-    expect(api.phones).toEqual(new Set(["+17634060903", "+13145550101"]));
-    expect(api.calls.filter((c) => c.method === "POST")).toHaveLength(1);
+    expect(api.phones).toEqual(new Set(["+17634060903", "+13145550101", "+13145550102"]));
+    expect(api.calls.filter((c) => c.method === "POST")).toHaveLength(2);
+  });
+
+  it("welcomes newly added users who signed up with their phone, once", async () => {
+    const { agent, sent } = setup();
+    await agent.syncContacts();
+    await agent.syncContacts();
+    // Hwaejin was already on Photon; invited Ravi gets the invite instead.
+    expect(sent.map((s) => s.address)).toEqual(["+13145550101"]);
+    expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./);
   });
 
   it("registers a brand-new recipient before sending to them", async () => {

@@ -138,6 +138,13 @@ export function renderNothingPending(link: string): string {
   return compose(label({ kind: "post_on_web" }), "No invites waiting for you.", "Start your own circle", link);
 }
 
+// First message to someone who signed up with their phone: it starts the thread on their Photon line, so they
+// never need to know which number to text.
+export function renderWelcome(link: string): string {
+  const body = "You're set up for Toothbrush Connect. Friends' updates will arrive here. Text STOP to opt out.";
+  return compose(label({ kind: "post_on_web" }), body, "Post yours on the website", link);
+}
+
 // [👋 INVITE] You're in Sahmey's circle. Their updates will arrive here.
 export function renderJoined(p: { inviterNames: string[] }, link: string): string {
   const names = p.inviterNames.map(name);

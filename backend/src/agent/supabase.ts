@@ -99,7 +99,7 @@ export function createSupabaseInbox(db: SupabaseClient): Inbox {
 export function createSupabaseContacts(db: SupabaseClient): ContactDirectory {
   return {
     async listPhones() {
-      const ids = await db.from("channel_identities").select("user_id, address").eq("channel", "imessage");
+      const ids = await db.from("channel_identities").select("user_id, address, verified_at").eq("channel", "imessage");
       if (ids.error) throw new Error(`channel_identities: ${ids.error.message}`);
       const userIds = [...new Set(ids.data.map((r) => r.user_id as string))];
       const names = userIds.length
@@ -107,7 +107,11 @@ export function createSupabaseContacts(db: SupabaseClient): ContactDirectory {
         : { data: [], error: null };
       if (names.error) throw new Error(`profiles: ${names.error.message}`);
       const byId = new Map(names.data.map((p) => [p.id as string, (p.display_name as string | null) ?? null]));
-      return ids.data.map((r) => ({ phone: r.address as string, name: byId.get(r.user_id as string) ?? null }));
+      return ids.data.map((r) => ({
+        phone: r.address as string,
+        name: byId.get(r.user_id as string) ?? null,
+        verified: r.verified_at !== null,
+      }));
     },
   };
 }
