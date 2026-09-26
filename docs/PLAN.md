@@ -126,11 +126,18 @@ The agent defines these; someone outside `agent/` implements and wires them.
 | --- | --- | --- | --- |
 | 0 | **Spike + tooling** ✅ | Spike done (see Photon facts). Installed only what the agent uses: `spectrum-ts`, `@spectrum-ts/imessage`, `zod` 4; dev: `typescript`, `tsx`, `vitest` 5, `@types/node`. (`pg`, `bullmq`, `ioredis` are left to the backend owners.) `package-lock.json` committed. Backend CI moved to Node 22 (vitest 5 needs ≥ 22.12). `.env.example` uses `PHOTON_PROJECT_ID` / `PHOTON_PROJECT_SECRET`. | ✅ `npm ci && npm run build && npm test` pass in `backend/` |
 | 1 | **Templates + labels** ✅ | `templates/labels.ts`, `templates/messages.ts`, `templates/messages.test.ts` (every template starts with a catalog label and ends with a link; no recipient names leak) | ✅ Tests green |
-| 2 | **Ports + providers + core** | `ports.ts`, `fakes.ts`, `config.ts`, `providers/types.ts`, `providers/imessage.ts`, `index.ts` with terminal mode | `AGENT_MODE=terminal` prints a rendered update; the iMessage provider sends to the test phone |
-| 3 | **Outbound update path** | `routing/channel-router.ts`, `routing/batcher.ts`, `send-update.ts` | With fakes: 3 check-ins within 60 s → one `[📦 3 UPDATES]`; a retried batch sends once; caps and quiet hours hold messages |
-| 4 | **Other outbound** | invite, code, brushing-now, edited, reaction/reply notices | Caps covered by tests; "Target not allowed" surfaces as `RecipientNotReachable` |
-| 5 | **Inbound** | `inbound/handler.ts`, `commands.ts`, `relay.ts` | With fakes: STOP opts out immediately; replies get ≤ 1 auto-response per 12 h; tapback on a delivered update reaches `ReactionSink`; inbound text never creates a check-in |
-| 6 | **Fallbacks + hardening** | `providers/whatsapp.ts`, `providers/sms.ts`, retry with backoff when Photon is down, analytics calls, fix stale FR IDs in agent stub comments | Provider failure → retried, never duplicated |
+| 2 | **Core send path** ✅ | `config.ts`, `providers/types.ts`, `providers/imessage.ts`, `providers/terminal.ts`, `ports.ts` (`DeliveryLog`, `LinkBuilder`), `fakes.ts`, `index.ts` (`createAgent().deliverCheckIn(checkIn, recipients)`), `dev.ts` | ✅ `AGENT_MODE=terminal` prints a rendered update (Node and Deno); retries never double-send; live send to the test phone pending |
+| 3 | **Website hookup** (backend owners) | Edge function calls `deliverCheckIn` when `deliver_check_in` runs; `DeliveryLog` on `outbound_messages`; SQL stops rendering message text | Post on the website → iMessage arrives after the 30 s hold |
+| 4 | **STOP** | Photon webhook → `STOP` / `START` sets opt-out; `[ℹ️ POST ON THE WEB]` auto-reply to other texts | STOP ends iMessages immediately; website unaffected |
+
+**Scope trimmed (2026-09-26).** The agent is only: post on the website → Photon → iMessage to each recipient,
+sent when the 30 s hold ends. No AI. Cut for now: batching and daily caps, quiet hours, WhatsApp/SMS,
+invites/codes/brushing-now by text, tapback relay. The templates for those stay; the sections above that
+describe them are kept for later.
+
+**Deno note:** edge functions run on Deno, and our imports use Node-style `.js` suffixes. Verified with
+Deno 2.9: works with `--unstable-sloppy-imports` (or `"unstable": ["sloppy-imports"]` in the function's
+`deno.json`).
 
 Integration with the real database, queue and fan-out happens when the backend owners implement
 the ports; the agent's fakes define the expected behavior.
