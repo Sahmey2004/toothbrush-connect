@@ -107,7 +107,7 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
     // contacts with Photon every `syncEveryMs`.
     async run({
       intervalMs = 2000,
-      syncEveryMs = 30_000,
+      syncEveryMs = 5_000,
       signal,
     }: { intervalMs?: number; syncEveryMs?: number; signal?: AbortSignal } = {}) {
       let lastSync = -Infinity;
