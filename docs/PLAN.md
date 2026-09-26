@@ -125,7 +125,7 @@ The agent defines these; someone outside `agent/` implements and wires them.
 | # | Phase | Deliverables | Done when |
 | --- | --- | --- | --- |
 | 0 | **Spike + tooling** ✅ | Spike done (see Photon facts). Installed only what the agent uses: `spectrum-ts`, `@spectrum-ts/imessage`, `zod` 4; dev: `typescript`, `tsx`, `vitest` 5, `@types/node`. (`pg`, `bullmq`, `ioredis` are left to the backend owners.) `package-lock.json` committed. Backend CI moved to Node 22 (vitest 5 needs ≥ 22.12). `.env.example` uses `PHOTON_PROJECT_ID` / `PHOTON_PROJECT_SECRET`. | ✅ `npm ci && npm run build && npm test` pass in `backend/` |
-| 1 | **Templates + labels** | `templates/labels.ts`, `templates/messages.ts`, `templates/messages.test.ts` (every template starts with a catalog label and ends with a link; no recipient names leak) | Tests green |
+| 1 | **Templates + labels** ✅ | `templates/labels.ts`, `templates/messages.ts`, `templates/messages.test.ts` (every template starts with a catalog label and ends with a link; no recipient names leak) | ✅ Tests green |
 | 2 | **Ports + providers + core** | `ports.ts`, `fakes.ts`, `config.ts`, `providers/types.ts`, `providers/imessage.ts`, `index.ts` with terminal mode | `AGENT_MODE=terminal` prints a rendered update; the iMessage provider sends to the test phone |
 | 3 | **Outbound update path** | `routing/channel-router.ts`, `routing/batcher.ts`, `send-update.ts` | With fakes: 3 check-ins within 60 s → one `[📦 3 UPDATES]`; a retried batch sends once; caps and quiet hours hold messages |
 | 4 | **Other outbound** | invite, code, brushing-now, edited, reaction/reply notices | Caps covered by tests; "Target not allowed" surfaces as `RecipientNotReachable` |
