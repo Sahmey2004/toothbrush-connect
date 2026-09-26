@@ -105,3 +105,16 @@ export interface Reaction {
   text: string | null;
   created_at: string;
 }
+
+// A reply or reaction a friend sent to one of my updates (public.get_my_reactions).
+export interface ReceivedReaction {
+  id: string;
+  from_user: string;
+  from_name: string;
+  kind: ReactionKind;
+  text: string | null;
+  check_in_id: string | null;
+  check_in_mood: Mood | null;
+  check_in_text: string | null;
+  created_at: string;
+}

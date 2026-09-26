@@ -1,6 +1,7 @@
 import { useAuth } from "../auth/AuthProvider";
 import { usePresence } from "../hooks/usePresence";
 import { FriendCard } from "../components/feed/FriendCard";
+import { RepliesToMe } from "../components/feed/RepliesToMe";
 import type { FeedItem } from "../types/api";
 
 const dayKey = (iso: string) => new Date(iso).toDateString();
@@ -27,6 +28,7 @@ export default function Timeline() {
     <div className="page">
       <h1 className="page-title">Updates</h1>
       <p className="hint">The last 14 days of updates sent to you.</p>
+      {me?.id && <RepliesToMe myId={me.id} />}
       {loaded && feed.length === 0 && <p className="empty">No updates yet. They'll show up here after your friends brush.</p>}
       {[...groups.entries()].map(([k, items]) => (
         <section key={k} className="day">
