@@ -49,12 +49,13 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Sam" maxLength={40} />
         </label>
         <label className="field">
-          <span>Phone</span>
-          <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 000-0002" />
+          <span>Email or phone</span>
+          <input type="text" inputMode="email" autoComplete="off" required value={phone}
+            onChange={(e) => setPhone(e.target.value)} placeholder="sam@gmail.com" />
         </label>
         <button className="btn btn--primary">Send invite</button>
       </form>
-      <p className="hint">They get one text: “Reply YES to join.” No follow-ups if they don't.</p>
+      <p className="hint">Use the email they sign in with, and they'll see your request in their circle.</p>
       <button className="btn btn--quiet" onClick={share}>Share an invite link instead</button>
       {link && <p className="hint">Copied: <code>{link}</code></p>}
       {note && <p className="ok-note" role="status">{note}</p>}
