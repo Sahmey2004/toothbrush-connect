@@ -3,7 +3,7 @@
 import { supabase } from "../lib/supabase";
 import type { Mood, Scope } from "../types/moods";
 import type {
-  Audience, BrushSession, CheckIn, CircleMember, FeedItem, FriendList, Me, Reaction, ReactionKind, Settings,
+  Audience, BrushSession, CheckIn, CircleMember, FeedItem, FriendList, Me, Reaction, ReactionKind, ReceivedReaction, Settings,
 } from "../types/api";
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -98,6 +98,8 @@ export const api = {
   // Reactions
   react: (checkInId: string, kind: ReactionKind, text?: string) =>
     rpc<Reaction>("send_reaction", { p_check_in: checkInId, p_kind: kind, p_text: text ?? null }),
+  // Replies and reactions friends sent to my updates, newest first, with their names.
+  myReactions: (days = 14) => rpc<ReceivedReaction[]>("get_my_reactions", { p_days: days }),
 
   // Lists (RLS: owner only)
   lists: async () => {
