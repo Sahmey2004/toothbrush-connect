@@ -3,7 +3,7 @@
 // are not granted to the public key.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Mood, Scope } from "../domain/moods.js";
-import type { DeliverableCheckIn, Inbox, InboundResult, Outbox, OutboxMessage } from "./ports.js";
+import type { ContactDirectory, DeliverableCheckIn, Inbox, InboundResult, Outbox, OutboxMessage } from "./ports.js";
 import type { Channel } from "./providers/types.js";
 import type { AudienceLabel } from "./templates/labels.js";
 
@@ -92,6 +92,22 @@ export function createSupabaseInbox(db: SupabaseClient): Inbox {
       if (error) throw new Error(`agent_handle_inbound: ${error.message}`);
       const r = data as { action: InboundResult["action"]; user_id: string; names?: string[] | null };
       return { action: r.action, userId: r.user_id, names: r.names ?? [] };
+    },
+  };
+}
+
+export function createSupabaseContacts(db: SupabaseClient): ContactDirectory {
+  return {
+    async listPhones() {
+      const ids = await db.from("channel_identities").select("user_id, address").eq("channel", "imessage");
+      if (ids.error) throw new Error(`channel_identities: ${ids.error.message}`);
+      const userIds = [...new Set(ids.data.map((r) => r.user_id as string))];
+      const names = userIds.length
+        ? await db.from("profiles").select("id, display_name").in("id", userIds)
+        : { data: [], error: null };
+      if (names.error) throw new Error(`profiles: ${names.error.message}`);
+      const byId = new Map(names.data.map((p) => [p.id as string, (p.display_name as string | null) ?? null]));
+      return ids.data.map((r) => ({ phone: r.address as string, name: byId.get(r.user_id as string) ?? null }));
     },
   };
 }

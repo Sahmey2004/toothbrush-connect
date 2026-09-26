@@ -4,8 +4,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { loadAgentConfig, type AgentConfig } from "./config.js";
 import { createInboundHandler } from "./inbound/handler.js";
-import type { Inbox, LinkBuilder, Outbox, OutboxMessage, SendReport } from "./ports.js";
+import type { ContactDirectory, ContactRegistry, Inbox, LinkBuilder, Outbox, OutboxMessage, SendReport } from "./ports.js";
 import { connectIMessage, createIMessageProvider } from "./providers/imessage.js";
+import { createPhotonUsers, noContactRegistry } from "./providers/photon-users.js";
 import { createTerminalProvider } from "./providers/terminal.js";
 import type { MessagingProvider } from "./providers/types.js";
 import { renderUpdate } from "./templates/messages.js";
@@ -17,10 +18,14 @@ export interface AgentDeps {
   outbox: Outbox;
   inbox: Inbox;
   links: LinkBuilder;
+  // Photon only talks to numbers on the project's Users list; every known phone is added to it.
+  contacts?: { directory: ContactDirectory; registry: ContactRegistry };
   log?: (line: string) => void;
 }
 
-export function createAgent({ provider, outbox, inbox, links, log = console.log }: AgentDeps) {
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+export function createAgent({ provider, outbox, inbox, links, contacts, log = console.log }: AgentDeps) {
   const handleInbound = createInboundHandler({ provider, inbox, links });
   // Check-ins are re-rendered with our templates and brushing-now gets its Join link (FR-D3: label first, link
   // last); other kinds go out as the database wrote them.
@@ -38,13 +43,29 @@ export function createAgent({ provider, outbox, inbox, links, log = console.log 
     }
   }
 
+  async function register(phone: string, name?: string | null) {
+    if (!contacts) return;
+    try {
+      if (await contacts.registry.ensure(phone, name)) log(`registered ${phone} with Photon`);
+    } catch (e) {
+      log(`registering ${phone} with Photon failed: ${errorText(e)}`);
+    }
+  }
+
+  // Add every phone in the database to Photon's Users, e.g. right after someone signs up or is invited.
+  async function syncContacts() {
+    if (!contacts) return;
+    for (const c of await contacts.directory.listPhones()) await register(c.phone, c.name);
+  }
+
   async function sendOne(m: OutboxMessage): Promise<SendReport> {
     if (m.channel !== provider.channel) return { ok: false, error: `no ${m.channel} provider` };
+    await register(m.address); // a brand-new invitee may not be synced yet
     try {
       const { providerMessageId } = await provider.send(m.address, await textFor(m));
       return { ok: true, providerMessageId };
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      return { ok: false, error: errorText(e) };
     }
   }
 
@@ -62,14 +83,25 @@ export function createAgent({ provider, outbox, inbox, links, log = console.log 
 
   return {
     drain,
+    syncContacts,
 
-    // Poll the outbox until `signal` aborts. The database's cron delivers held check-ins every 5 s.
-    async run({ intervalMs = 2000, signal }: { intervalMs?: number; signal?: AbortSignal } = {}) {
+    // Poll the outbox until `signal` aborts (the database's cron delivers held check-ins every 5 s), and sync
+    // contacts with Photon every `syncEveryMs`.
+    async run({
+      intervalMs = 2000,
+      syncEveryMs = 30_000,
+      signal,
+    }: { intervalMs?: number; syncEveryMs?: number; signal?: AbortSignal } = {}) {
+      let lastSync = -Infinity;
       while (!signal?.aborted) {
+        if (Date.now() - lastSync >= syncEveryMs) {
+          lastSync = Date.now();
+          await syncContacts().catch((e) => log(`contact sync failed: ${errorText(e)}`));
+        }
         try {
           await drain();
         } catch (e) {
-          log(`outbox poll failed: ${e instanceof Error ? e.message : String(e)}`);
+          log(`outbox poll failed: ${errorText(e)}`);
         }
         await sleep(intervalMs, undefined, { signal }).catch(() => {});
       }
@@ -86,7 +118,7 @@ export function createAgent({ provider, outbox, inbox, links, log = console.log 
           const reply = await handleInbound(event);
           log(`inbound ${event.type} from ${event.from}${reply ? ` → replied ${reply.split(" ", 3).join(" ")}` : ""}`);
         } catch (e) {
-          log(`inbound from ${event.from} failed: ${e instanceof Error ? e.message : String(e)}`);
+          log(`inbound from ${event.from} failed: ${errorText(e)}`);
         }
       }
     },
@@ -100,4 +132,9 @@ export type Agent = ReturnType<typeof createAgent>;
 // The provider AGENT_MODE asks for: Photon iMessage, or printing to the terminal.
 export async function createProvider(config: AgentConfig = loadAgentConfig()): Promise<MessagingProvider> {
   return config.mode === "photon" ? createIMessageProvider(await connectIMessage(config.photon)) : createTerminalProvider();
+}
+
+// Photon's Users list in photon mode; nothing to register in terminal mode.
+export function createContactRegistry(config: AgentConfig = loadAgentConfig()): ContactRegistry {
+  return config.mode === "photon" ? createPhotonUsers(config.photon) : noContactRegistry;
 }

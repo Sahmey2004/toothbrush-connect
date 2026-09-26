@@ -65,6 +65,16 @@ export interface Inbox {
   }): Promise<InboundResult>;
 }
 
+// Phone numbers the agent should be able to message: iMessage rows of `channel_identities`.
+export interface ContactDirectory {
+  listPhones(): Promise<{ phone: string; name: string | null }[]>;
+}
+
+// The provider's list of allowed numbers (Photon project Users). True if the phone was newly added.
+export interface ContactRegistry {
+  ensure(phone: string, name?: string | null): Promise<boolean>;
+}
+
 export interface LinkBuilder {
   // Where a check-in message links on the website (a magic link once FR-W7 exists).
   checkIn(checkInId: string, recipientId: string): string;
