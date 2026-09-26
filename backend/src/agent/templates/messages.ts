@@ -115,7 +115,33 @@ export function renderDigest(p: { updates: number; friends: number }, link: stri
   return compose(label({ kind: "digest" }), `This week: ${u} from ${f}.`, "Catch up", link);
 }
 
-// [ℹ️ POST ON THE WEB] This line only delivers updates.
+// [ℹ️ POST ON THE WEB] This line only delivers updates. Text STOP to opt out. (FR-D5 auto-reply)
 export function renderPostOnWeb(link: string): string {
-  return compose(label({ kind: "post_on_web" }), "This line only delivers updates.", "Post updates on the website", link);
+  const body = "This line only delivers updates. Text STOP to opt out.";
+  return compose(label({ kind: "post_on_web" }), body, "Post updates on the website", link);
+}
+
+// Answers to texted commands. The catalog has no label of its own for these, so they use the info label.
+
+// The one confirmation carriers allow after STOP (FR-D6).
+export function renderStopped(link: string): string {
+  const body = "You won't get more messages here. Text START to turn them back on.";
+  return compose(label({ kind: "post_on_web" }), body, "Updates stay on the website", link);
+}
+
+export function renderStarted(link: string): string {
+  const body = "You're back. Friends' updates will arrive here again.";
+  return compose(label({ kind: "post_on_web" }), body, "Post yours on the website", link);
+}
+
+export function renderNothingPending(link: string): string {
+  return compose(label({ kind: "post_on_web" }), "No invites waiting for you.", "Start your own circle", link);
+}
+
+// [👋 INVITE] You're in Sahmey's circle. Their updates will arrive here.
+export function renderJoined(p: { inviterNames: string[] }, link: string): string {
+  const names = p.inviterNames.map(name);
+  const who = names.length ? names.join(", ") + "'s" : "your friend's";
+  const body = `You're in ${who} circle. Their updates will arrive here.`;
+  return compose(label({ kind: "invite" }), body, "Post yours on the website", link);
 }

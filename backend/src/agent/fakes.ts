@@ -1,6 +1,6 @@
 // In-memory ports for tests and dev.ts. The outbox mirrors claim_outbound / complete_outbound in
 // supabase/migrations/20260926000002_functions.sql.
-import type { DeliverableCheckIn, LinkBuilder, Outbox, OutboxMessage } from "./ports.js";
+import type { DeliverableCheckIn, Inbox, InboundResult, LinkBuilder, Outbox, OutboxMessage } from "./ports.js";
 import type { MessagingProvider, SendResult } from "./providers/types.js";
 
 export interface FakeRow extends OutboxMessage {
@@ -46,7 +46,19 @@ export function createMemoryOutbox(checkIns: Record<string, DeliverableCheckIn> 
 }
 
 export function createFixedLinks(base = "http://localhost:5173"): LinkBuilder {
-  return { checkIn: () => `${base}/timeline` };
+  return { checkIn: () => `${base}/timeline`, page: (path) => `${base}${path}` };
+}
+
+// Records what it was asked to handle and answers with `decide`.
+export function createFakeInbox(decide: (text: string, reaction: string | null) => Partial<InboundResult> = () => ({})) {
+  const handled: Parameters<Inbox["handle"]>[0][] = [];
+  const inbox: Inbox = {
+    async handle(msg) {
+      handled.push(msg);
+      return { action: "help", userId: `user:${msg.from}`, names: [], ...decide(msg.text, msg.reaction) };
+    },
+  };
+  return { inbox, handled };
 }
 
 // Records sends; `fail` decides per address whether a send throws.

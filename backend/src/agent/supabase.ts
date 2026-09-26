@@ -1,8 +1,9 @@
-// Outbox on the Supabase database, using the service-role RPCs from migration 0002 (claim_outbound,
-// complete_outbound). Needs the secret (service role) key: those RPCs are not granted to the public key.
+// Outbox and inbox on the Supabase database, using the service-role RPCs from migration 0002
+// (claim_outbound, complete_outbound, agent_handle_inbound). Needs the secret (service role) key: those RPCs
+// are not granted to the public key.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Mood, Scope } from "../domain/moods.js";
-import type { DeliverableCheckIn, Outbox, OutboxMessage } from "./ports.js";
+import type { DeliverableCheckIn, Inbox, InboundResult, Outbox, OutboxMessage } from "./ports.js";
 import type { Channel } from "./providers/types.js";
 import type { AudienceLabel } from "./templates/labels.js";
 
@@ -74,6 +75,23 @@ export function createSupabaseOutbox(db: SupabaseClient): Outbox {
         text: c.text,
         audience: recipient.data.audience_label as AudienceLabel,
       } satisfies DeliverableCheckIn;
+    },
+  };
+}
+
+export function createSupabaseInbox(db: SupabaseClient): Inbox {
+  return {
+    async handle(msg) {
+      const { data, error } = await db.rpc("agent_handle_inbound", {
+        p_channel: msg.channel,
+        p_address: msg.from,
+        p_text: msg.text,
+        p_reply_to: msg.replyTo,
+        p_reaction: msg.reaction,
+      });
+      if (error) throw new Error(`agent_handle_inbound: ${error.message}`);
+      const r = data as { action: InboundResult["action"]; user_id: string; names?: string[] | null };
+      return { action: r.action, userId: r.user_id, names: r.names ?? [] };
     },
   };
 }

@@ -1,8 +1,10 @@
-// Messaging agent: drains the database's outbox (`outbound_messages`) and sends each message through Photon.
-// The website feed is delivered by the database separately; a failure here never affects it.
+// Messaging agent: drains the database's outbox (`outbound_messages`) and sends each message through Photon,
+// and answers texts and tapbacks coming back. The website feed is delivered by the database separately; a
+// failure here never affects it.
 import { setTimeout as sleep } from "node:timers/promises";
 import { loadAgentConfig, type AgentConfig } from "./config.js";
-import type { LinkBuilder, Outbox, OutboxMessage, SendReport } from "./ports.js";
+import { createInboundHandler } from "./inbound/handler.js";
+import type { Inbox, LinkBuilder, Outbox, OutboxMessage, SendReport } from "./ports.js";
 import { connectIMessage, createIMessageProvider } from "./providers/imessage.js";
 import { createTerminalProvider } from "./providers/terminal.js";
 import type { MessagingProvider } from "./providers/types.js";
@@ -13,11 +15,13 @@ export type * from "./ports.js";
 export interface AgentDeps {
   provider: MessagingProvider;
   outbox: Outbox;
+  inbox: Inbox;
   links: LinkBuilder;
   log?: (line: string) => void;
 }
 
-export function createAgent({ provider, outbox, links, log = console.log }: AgentDeps) {
+export function createAgent({ provider, outbox, inbox, links, log = console.log }: AgentDeps) {
+  const handleInbound = createInboundHandler({ provider, inbox, links });
   // Check-ins are re-rendered with our templates (label + link, FR-D3); other kinds go out as the database
   // wrote them.
   async function textFor(m: OutboxMessage): Promise<string> {
@@ -60,6 +64,22 @@ export function createAgent({ provider, outbox, links, log = console.log }: Agen
           log(`outbox poll failed: ${e instanceof Error ? e.message : String(e)}`);
         }
         await sleep(intervalMs, undefined, { signal }).catch(() => {});
+      }
+    },
+
+    // Answer inbound texts and tapbacks until the provider stops.
+    async listen() {
+      const seen = new Set<string>(); // the stream may repeat events after a reconnect
+      for await (const event of provider.inbound()) {
+        if (seen.has(event.messageId)) continue;
+        seen.add(event.messageId);
+        if (seen.size > 1000) seen.delete(seen.values().next().value!);
+        try {
+          const reply = await handleInbound(event);
+          log(`inbound ${event.type} from ${event.from}${reply ? ` → replied ${reply.split(" ", 3).join(" ")}` : ""}`);
+        } catch (e) {
+          log(`inbound from ${event.from} failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
       }
     },
 

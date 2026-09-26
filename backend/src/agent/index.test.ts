@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadDatabaseConfig } from "./config.js";
-import { createFakeProvider, createFixedLinks, createMemoryOutbox } from "./fakes.js";
+import { createFakeInbox, createFakeProvider, createFixedLinks, createMemoryOutbox } from "./fakes.js";
 import { createAgent, type DeliverableCheckIn } from "./index.js";
 import { RecipientNotReachable } from "./providers/types.js";
 
@@ -20,7 +20,13 @@ const checkInMsg = (address: string, userId = address) =>
 function setup(fail?: (address: string) => Error | null) {
   const { provider, sent } = createFakeProvider(fail);
   const box = createMemoryOutbox({ "ci-1": checkIn });
-  const agent = createAgent({ provider, outbox: box.outbox, links: createFixedLinks(), log: () => {} });
+  const agent = createAgent({
+    provider,
+    outbox: box.outbox,
+    inbox: createFakeInbox().inbox,
+    links: createFixedLinks(),
+    log: () => {},
+  });
   return { agent, sent, ...box };
 }
 
