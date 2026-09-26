@@ -1,22 +1,89 @@
-// Entry for inbound Photon messages: the database decides what happened, we pick the reply.
-import type { Db, InboundEvent } from "../../db/client.js";
-import { replyFor } from "../templates/messages.js";
+// Inbound texts and tapbacks. The database's agent_handle_inbound does the work ("Verify 123456" phone checks,
+// STOP / START, YES to accept invites, tapbacks and "> replies" recorded as reactions); this answers with the
+// right message. Inbound text never creates a check-in (FR-C7).
+import type { Inbox, InboundResult, LinkBuilder } from "../ports.js";
+import type { InboundEvent, MessagingProvider } from "../providers/types.js";
+import {
+  renderCodeProblem,
+  renderJoined,
+  renderNothingPending,
+  renderPostOnWeb,
+  renderStarted,
+  renderStopped,
+  renderVerified,
+} from "../templates/messages.js";
 
-const HELP_COOLDOWN_MS = 12 * 60 * 60 * 1000; // FR-D5: one "post on the web" reply per 12 h
+// FR-D5: at most one auto-reply per user per 12 hours.
+export const AUTO_REPLY_EVERY_MS = 12 * 60 * 60 * 1000;
 
-export function createInboundHandler(db: Db, opts: { siteUrl: string; onQueued?: () => void; now?: () => number }) {
-  const lastHelp = new Map<string, number>();
-  const now = opts.now ?? Date.now;
+// iMessage tapback emoji → the names agent_handle_inbound expects.
+const TAPBACKS: Record<string, string> = {
+  "❤️": "love",
+  "👍": "like",
+  "👎": "dislike",
+  "😂": "laugh",
+  "‼️": "emphasize",
+  "❓": "question",
+};
 
-  return async (event: InboundEvent): Promise<string | null> => {
-    const result = await db.handleInbound(event);
-    // A reaction or reply queues a message to the author; send it now instead of on the next poll.
-    if (result.action === "reacted" || result.action === "replied") opts.onQueued?.();
-    if (result.action === "help") {
-      const last = lastHelp.get(event.address);
-      if (last !== undefined && now() - last < HELP_COOLDOWN_MS) return null;
-      lastHelp.set(event.address, now());
+export interface InboundDeps {
+  provider: MessagingProvider;
+  inbox: Inbox;
+  links: LinkBuilder;
+  now?: () => number;
+}
+
+export function createInboundHandler({ provider, inbox, links, now = Date.now }: InboundDeps) {
+  // In memory: a restart can allow one extra auto-reply, which is fine.
+  const lastAutoReply = new Map<string | null, number>();
+  const home = links.page("/timeline");
+
+  function replyFor(r: InboundResult): string | null {
+    switch (r.action) {
+      case "stopped":
+        return renderStopped(home);
+      case "started":
+        return renderStarted(home);
+      case "joined":
+        return renderJoined({ inviterNames: r.names }, home);
+      case "nothing_pending":
+        return renderNothingPending(links.page("/circle"));
+      case "verified":
+        return renderVerified({ displayName: r.displayName, friendNames: r.names });
+      case "code_unknown":
+      case "code_expired":
+      case "phone_mismatch":
+      case "phone_taken":
+        return renderCodeProblem(r.action);
+      case "help":
+      case "no_update_to_reply": {
+        const last = lastAutoReply.get(r.userId);
+        if (last !== undefined && now() - last < AUTO_REPLY_EVERY_MS) return null;
+        lastAutoReply.set(r.userId, now());
+        return renderPostOnWeb(home);
+      }
+      case "reacted":
+      case "replied":
+      case "ignored":
+        return null; // the database queued any notice for the author; stay quiet here
     }
-    return replyFor(result, opts.siteUrl);
+  }
+
+  // Returns the reply that was sent, if any.
+  return async function handleInbound(event: InboundEvent): Promise<string | null> {
+    const result = await inbox.handle(
+      event.type === "text"
+        ? { channel: event.channel, from: event.from, text: event.text, replyTo: event.replyTo ?? null, reaction: null }
+        : {
+            channel: event.channel,
+            from: event.from,
+            text: "",
+            replyTo: event.targetMessageId,
+            reaction: TAPBACKS[event.emoji] ?? "love",
+          },
+    );
+    const reply = replyFor(result);
+    if (reply) await provider.send(event.from, reply);
+    return reply;
   };
 }

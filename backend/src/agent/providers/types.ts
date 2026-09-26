@@ -1,21 +1,50 @@
-// Common provider interface so iMessage / WhatsApp / SMS are swappable behind the agent.
-import type { InboundEvent } from "../../db/client.js";
+// Common provider interface so iMessage / WhatsApp / SMS are swappable behind the agent (FR-D2).
 
-export interface OutgoingMessage {
-  address: string;        // E.164 phone
-  body: string;           // fully rendered, label first
-  effect?: string | null; // e.g. "confetti"; providers without effects ignore it
+export type Channel = "imessage" | "whatsapp" | "sms";
+
+export interface SendResult {
+  providerMessageId: string;
 }
 
-export type InboundListener = (event: InboundEvent) => Promise<string | null>;
+export type InboundEvent =
+  | {
+      type: "text";
+      channel: Channel;
+      from: string;
+      messageId: string;
+      text: string;
+      // Set for a threaded reply: id of our outbound message it answers (text is then "> …").
+      replyTo?: string;
+    }
+  | {
+      type: "reaction";
+      channel: Channel;
+      from: string;
+      messageId: string;
+      emoji: string;
+      // Id of our outbound message that was tapped back; matches the stored provider message id (FR-D7).
+      targetMessageId: string;
+    };
 
 export interface MessagingProvider {
-  readonly name: string;
-  send(message: OutgoingMessage): Promise<{ providerMessageId: string }>;
-  /** Deliver inbound texts and tapbacks to `onEvent`; whatever it returns is sent back as a reply. */
-  listen(onEvent: InboundListener): Promise<void>;
+  readonly channel: Channel;
+  // Throws RecipientNotReachable when the provider refuses the address (don't retry). Providers without effects
+  // ignore `effect` (e.g. "confetti" on DONE).
+  send(address: string, text: string, options?: { effect?: string | null }): Promise<SendResult>;
+  // Inbound events until stop() is called.
+  inbound(): AsyncIterable<InboundEvent>;
   stop(): Promise<void>;
 }
 
-/** The recipient hasn't texted our Photon line yet, so Photon won't let us message them. */
-export class RecipientNotReachable extends Error {}
+// The provider will not deliver to this address, e.g. Photon's "Target not allowed for this project"
+// before the recipient has texted the shared line. Retrying won't help.
+export class RecipientNotReachable extends Error {
+  override readonly name = "RecipientNotReachable";
+  constructor(
+    readonly channel: Channel,
+    readonly address: string,
+    options?: { cause?: unknown },
+  ) {
+    super(`${channel} will not deliver to ${address}`, options);
+  }
+}

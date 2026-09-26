@@ -72,13 +72,16 @@ The database queues every outgoing message (check-in deliveries, invites, brushi
 
 ```sh
 cd backend && npm install
-# fill in backend/.env: SUPABASE_SERVICE_ROLE_KEY, PHOTON_PROJECT_ID, PHOTON_PROJECT_SECRET
+# fill in backend/.env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY),
+# and for real iMessages AGENT_MODE=photon, PHOTON_PROJECT_ID, PHOTON_PROJECT_SECRET
 npm run dev
 ```
 
-Without the Photon values the agent runs in **dry-run**: it logs messages instead of sending them, and
-`POST localhost:8787/dev/inbound {"from": "+1…", "text": "…"}` pretends someone texted the line. Dry-run only
-drains the outbox of a local database, so it never swallows real messages queued on the hosted project.
+`AGENT_MODE` defaults to **terminal**: messages are printed instead of sent. Terminal mode only drains the
+outbox of a local database, so it never swallows real messages queued on the hosted project. In photon mode
+the agent also adds every phone in `channel_identities` to Photon's project Users and welcomes people who
+signed up with their phone. `npx tsx --env-file=.env src/agent/dev.ts [welcome] +1…` sends one sample message
+without the database.
 
 ### Connecting friends and phones
 

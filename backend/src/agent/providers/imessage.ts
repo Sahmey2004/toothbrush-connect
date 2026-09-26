@@ -1,81 +1,73 @@
-// Photon managed iMessage provider: send labelled messages, typing indicators, tapbacks, threaded replies, effects.
-import { Spectrum, type Message, type Space } from "spectrum-ts";
-import { effect as withEffect, imessage } from "@spectrum-ts/imessage";
-import type { InboundEvent, InboundReaction } from "../../db/client.js";
-import { RecipientNotReachable, type InboundListener, type MessagingProvider, type OutgoingMessage } from "./types.js";
+// Photon-managed iMessage through Spectrum. Outbound opens a DM by phone number; inbound comes from the
+// SDK's own message stream, so no webhook or public URL is needed (see PLAN.md "Photon Spectrum facts").
+import { Spectrum, type Message } from "spectrum-ts";
+import { effect as withEffect, imessage, type IMessageMessageEffect } from "@spectrum-ts/imessage";
+import { RecipientNotReachable, type InboundEvent, type MessagingProvider } from "./types.js";
 
-const EFFECTS: Record<string, string> = {
+// outbound_messages.effect → iMessage screen effect. Unknown names are sent without one.
+const EFFECTS: Record<string, IMessageMessageEffect> = {
   confetti: imessage.effect.message.confetti,
   celebration: imessage.effect.message.celebration,
   fireworks: imessage.effect.message.fireworks,
   balloons: imessage.effect.message.balloons,
 };
 
-// Tapback emoji as Photon reports them → the names agent_handle_inbound understands.
-const TAPBACKS: Record<string, InboundReaction> = {
-  "❤️": "love", "👍": "like", "👎": "dislike", "😂": "laugh", "‼️": "emphasize", "❓": "question",
-};
+export async function connectIMessage(photon: { projectId: string; projectSecret: string }) {
+  return Spectrum({ ...photon, providers: [imessage.config()] });
+}
 
-// spectrum-ts types are generic per provider; the agent only uses the shared surface.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Loose = any;
+type SpectrumApp = Awaited<ReturnType<typeof connectIMessage>>;
 
-/** Map a Photon message to our inbound event, or null for things we ignore (read receipts, typing…). */
+// Spectrum reports a number that hasn't texted the shared line as
+// `AuthenticationError: [spectrum-imessage] Target not allowed for this project`.
+function isTargetNotAllowed(e: unknown): boolean {
+  return e instanceof Error && /target not allowed/i.test(e.message);
+}
+
 export function toInboundEvent(message: Message): InboundEvent | null {
   if (message.direction !== "inbound" || !message.sender) return null;
-  const c = message.content as Loose;
-  const base = { channel: "imessage" as const, address: message.sender.id };
-  switch (c.type) {
+  const base = { channel: "imessage" as const, from: message.sender.id, messageId: message.id };
+  const content = message.content;
+  switch (content.type) {
     case "text":
-      return { ...base, text: c.text ?? "" };
+      return { ...base, type: "text", text: content.text };
     case "reaction":
-      return { ...base, text: null, reaction: TAPBACKS[c.emoji] ?? "love", replyTo: c.target?.id ?? null };
+      return { ...base, type: "reaction", emoji: content.emoji, targetMessageId: content.target.id };
     case "reply":
-      // A threaded reply to one of our updates is a private reply to its author.
-      return c.content?.type === "text" ? { ...base, text: `>${c.content.text ?? ""}`, replyTo: c.target?.id ?? null } : null;
+      // A threaded reply to one of our updates is a private "> reply" to its author.
+      return content.content.type === "text"
+        ? { ...base, type: "text", text: `>${content.content.text}`, replyTo: content.target.id }
+        : null;
     default:
-      return null;
+      return null; // attachments, typing, read receipts, …
   }
 }
 
-export async function createIMessageProvider(config: { projectId: string; projectSecret: string }): Promise<MessagingProvider> {
-  const app: Loose = await Spectrum({ projectId: config.projectId, projectSecret: config.projectSecret, providers: [imessage.config()] });
-  const im: Loose = imessage(app);
-  const seen = new Set<string>();
-
+export function createIMessageProvider(app: SpectrumApp): MessagingProvider {
+  const im = imessage(app);
   return {
-    name: "imessage",
+    channel: "imessage",
 
-    async send({ address, body, effect }: OutgoingMessage) {
+    async send(address, text, options) {
       try {
         const space = await im.space.create(address);
-        const content = effect && EFFECTS[effect] ? withEffect(body, EFFECTS[effect] as Loose) : body;
-        const sent = await space.send(content);
-        if (!sent?.id) throw new Error("Photon skipped the message");
-        return { providerMessageId: sent.id as string };
+        const screenEffect = options?.effect ? EFFECTS[options.effect] : undefined;
+        const sent = await space.send(screenEffect ? withEffect(text, screenEffect) : text);
+        if (!sent) throw new Error("Spectrum returned no message for send");
+        return { providerMessageId: sent.id };
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        // Shared Photon lines only message numbers that texted the line first.
-        if (msg.includes("Target not allowed")) throw new RecipientNotReachable(`${address} hasn't texted the line yet`);
+        if (isTargetNotAllowed(e)) throw new RecipientNotReachable("imessage", address, { cause: e });
         throw e;
       }
     },
 
-    async listen(onEvent: InboundListener) {
-      for await (const [space, message] of app.messages as AsyncIterable<[Space, Message]>) {
+    async *inbound() {
+      for await (const [, message] of app.messages) {
         const event = toInboundEvent(message);
-        if (!event || seen.has(message.id)) continue;
-        seen.add(message.id);
-        if (seen.size > 5000) seen.delete(seen.values().next().value!);
-        // Typing indicator while the database handles it, then the reply in the same conversation.
-        (space as Loose)
-          .responding(() => onEvent(event))
-          .then((reply: string | null) => (reply ? (space as Loose).send(reply) : undefined))
-          .catch((e: unknown) => console.error("inbound failed:", e));
+        if (event) yield event;
       }
     },
 
-    // spectrum-ts 12.10 no longer handles SIGINT/SIGTERM; index.ts calls this on shutdown.
     stop: () => app.stop(),
   };
 }
