@@ -136,3 +136,26 @@ export const api = {
     }
   },
 };
+
+// ── Phone verification (backend/supabase/functions/phone-connect) ─────────────────────────────
+
+export interface PhoneStart {
+  phone: string;
+  code: string;
+  link: string | null;         // opens Messages with "Verify 123456" filled in; null in dry-run
+  line_number: string | null;
+  dry_run: boolean;
+}
+
+export async function startPhoneVerification(phone: string): Promise<PhoneStart> {
+  const { data, error } = await supabase.functions.invoke("phone-connect", { body: { phone } });
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? "Couldn't start verification. Try again.");
+  }
+  return data as PhoneStart;
+}
+
+/** Same link the function returns, rebuilt from get_me after a reload. */
+export const photonVerifyLink = (photonUserId: string, code: string) =>
+  `https://spectrum.photon.codes/users/${photonUserId}/redirect?msg=${encodeURIComponent(`Verify ${code}`)}`;

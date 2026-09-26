@@ -99,7 +99,13 @@ export type InboundResult =
   | { action: "reacted"; user_id: string }                 // tapback relayed to the author
   | { action: "replied"; user_id: string }                 // '>' reply relayed to the author
   | { action: "no_update_to_reply"; user_id: string }
-  | { action: "help"; user_id: string };                   // anything else: point them to the website
+  | { action: "help"; user_id: string }                    // anything else: point them to the website
+  // "Verify 123456" (phone verification, migration 0006)
+  | { action: "verified"; user_id: string; display_name: string; names: string[] }
+  | { action: "code_unknown" }
+  | { action: "code_expired"; user_id: string }
+  | { action: "phone_mismatch"; user_id: string }             // code texted from a different number
+  | { action: "phone_taken"; user_id: string };
 
 export type SendFn = (msg: OutboundMessage) => Promise<{ providerMessageId: string }>;
 

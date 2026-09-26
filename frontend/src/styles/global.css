@@ -435,3 +435,25 @@ code { font-size: var(--t-s); word-break: break-all; }
 .btn--google { background: var(--surface); border-color: var(--ink); color: var(--ink); }
 .btn--google:hover:not(:disabled) { background: var(--porcelain); }
 .divider { text-align: center; color: var(--ink-soft); font-size: var(--t-s); }
+
+/* ── Phone verification & notices ────────────────────────────────────────────────────────── */
+
+.phone-card {
+  display: grid; gap: 0.6rem; padding: 1.1rem; border-radius: var(--r-card);
+  background: var(--surface); border: 2px solid var(--ink);
+}
+.phone-card.is-compact { border-color: var(--mint-deep); }
+.phone-card.is-waiting { background: #e1f5ef; border-color: var(--mint-deep); }
+.phone-card.is-done { border-color: var(--grout); }
+.phone-card__title { font-family: var(--display); font-weight: 800; font-size: var(--t-l); }
+.phone-card__line { color: var(--ink-soft); }
+.phone-card__cta { justify-self: stretch; }
+.phone-card__status { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: var(--t-s); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--mint-deep); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+
+.notice {
+  position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+  padding: 0.8rem 1rem; background: var(--mint); color: var(--ink); font-weight: 700; border-bottom: 2px solid var(--ink);
+}
+.notice__close { border: 0; background: transparent; font-size: 1.4rem; line-height: 1; cursor: pointer; min-width: 44px; min-height: 44px; }

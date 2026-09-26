@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { ErrorNote } from "../components/common/ErrorNote";
+import { clearPendingInvite, savePendingInvite } from "../lib/pendingInvite";
 
 // /invite/:token — a friend's shareable invite link.
 export default function Invite() {
@@ -13,8 +14,17 @@ export default function Invite() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getInvite(token).then((i) => setInviter(i?.inviter_name ?? null)).catch(() => setInviter(null));
+    api.getInvite(token).then((i) => {
+      setInviter(i?.inviter_name ?? null);
+      if (i) savePendingInvite(token);
+      else clearPendingInvite();
+    }).catch(() => setInviter(null));
   }, [token]);
+
+  // Already set up: the app shell accepts the saved invite and shows who you're connected with.
+  useEffect(() => {
+    if (inviter && session && me?.settings.onboarded_at) navigate("/circle", { replace: true });
+  }, [inviter, session, me, navigate]);
 
   const accept = async () => {
     try {

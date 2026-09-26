@@ -13,7 +13,9 @@ export interface RealtimeHandlers {
 
 export function subscribeToCircle(myId: string, h: RealtimeHandlers) {
   const channel = supabase
-    .channel(`circle:${myId}`)
+    // Unique topic per subscription: supabase.channel() returns an existing channel with the same
+    // topic, and one that is still closing (StrictMode remount, page change) never resubscribes.
+    .channel(`circle:${myId}:${Math.random().toString(36).slice(2)}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "brush_sessions" }, (p) => {
       const row = p.new as BrushSession;
       if (row?.user_id && row.user_id !== myId && (p.eventType === "INSERT" || p.eventType === "UPDATE")) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { ErrorNote } from "../components/common/ErrorNote";
+import { PhoneVerify } from "../components/phone/PhoneVerify";
 import type { Channel, FriendList, Settings as S } from "../types/api";
 
 const CHANNELS: { id: Channel; label: string }[] = [
@@ -71,6 +72,11 @@ export default function Settings() {
           <button className="btn btn--quiet">Save name</button>
         </form>
         <p className="hint">Signed in as {me.email ?? me.phone}</p>
+      </section>
+
+      <section className="panel form">
+        <h2 className="section-title">iMessage</h2>
+        <PhoneVerify />
       </section>
 
       <section className="panel form">

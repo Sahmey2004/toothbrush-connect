@@ -66,11 +66,31 @@ supabase config push        # apply auth settings from config.toml; review the d
 ### Messaging agent
 
 The database queues every outgoing message (check-in deliveries, invites, brushing-now, reactions) in
-`outbound_messages`. The agent in `backend/src/agent/` claims them with the `claim_outbound` RPC, sends them
-through Photon, and reports back with `complete_outbound`; inbound texts go to `agent_handle_inbound`.
-See `docs/PLAN.md` for the Photon setup (`PHOTON_PROJECT_ID` / `PHOTON_PROJECT_SECRET` in `backend/.env`)
-and the build phases.
+`outbound_messages`. The agent (`backend/src/agent/`, a long-running Node process) claims them with
+`claim_outbound`, sends them through Photon, and records the result; inbound texts and tapbacks go to
+`agent_handle_inbound`. Photon notes and the build plan: `docs/PLAN.md`.
 
 ```sh
-cd backend && npm install && npm run build && npm test
+cd backend && npm install
+# fill in backend/.env: SUPABASE_SERVICE_ROLE_KEY, PHOTON_PROJECT_ID, PHOTON_PROJECT_SECRET
+npm run dev
 ```
+
+Without the Photon values the agent runs in **dry-run**: it logs messages instead of sending them, and
+`POST localhost:8787/dev/inbound {"from": "+1…", "text": "…"}` pretends someone texted the line. Dry-run only
+drains the outbox of a local database, so it never swallows real messages queued on the hosted project.
+
+### Connecting friends and phones
+
+- **Friends:** Circle → *Share your invite link*. The link survives Google sign-in and connects you as soon
+  as the friend has set up. Adding someone by the email they signed in with also works.
+- **Phones:** Google accounts have no phone number, so nobody gets iMessages until they add one.
+  Circle or Settings → enter the number → *Text to verify*. Messages opens addressed to their Photon line
+  with "Verify 123456" filled in; when the agent receives it, the number is linked. Texting first is also
+  what lets Photon's shared line message that number. If friends had invited that number earlier, the
+  placeholder profile merges into the account (friendships and received updates carry over).
+- The `phone-connect` edge function registers the number with Photon; it needs the Photon secrets:
+  `supabase secrets set PHOTON_PROJECT_ID=… PHOTON_PROJECT_SECRET=… --project-ref iltbflwrlybklasqpudg`.
+  Without them it runs in dry-run (shows the code, no Messages link).
+
+Tests: `npm test` (agent) and the SQL suites in `backend/supabase/tests/` (see *Local stack* above).

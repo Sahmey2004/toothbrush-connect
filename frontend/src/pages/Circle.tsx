@@ -5,6 +5,7 @@ import { usePresence } from "../hooks/usePresence";
 import { Avatar } from "../components/common/Avatar";
 import { ErrorNote } from "../components/common/ErrorNote";
 import { checkInLabel, timeAgo } from "../lib/labels";
+import { PhoneVerify } from "../components/phone/PhoneVerify";
 import type { CircleMember } from "../types/api";
 
 function InviteForm({ onInvited }: { onInvited: () => void }) {
@@ -33,16 +34,25 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
   };
 
   const share = async () => {
-    const token = await api.createInviteLink();
-    const url = `${location.origin}/invite/${token}`;
-    setLink(url);
-    if (navigator.share) navigator.share({ title: "Brush with me", url }).catch(() => {});
-    else navigator.clipboard?.writeText(url).catch(() => {});
+    setError(null);
+    try {
+      const token = await api.createInviteLink();
+      const url = `${location.origin}/invite/${token}`;
+      setLink(url);
+      if (navigator.share) await navigator.share({ title: "Brush with me", text: "Let's catch up while we brush our teeth", url }).catch(() => {});
+      else await navigator.clipboard?.writeText(url).catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
     <section className="panel">
-      <h2 className="section-title">Invite a friend</h2>
+      <h2 className="section-title">Invite friends</h2>
+      <button className="btn btn--primary btn--big" onClick={share}>Share your invite link</button>
+      <p className="hint">Send it in iMessage or any chat. When they open it and sign in, you're connected.</p>
+      {link && <p className="hint">Link: <code>{link}</code></p>}
+      <p className="divider">or add someone who already signed up</p>
       <form className="form form--inline" onSubmit={submit}>
         <label className="field">
           <span>Name</span>
@@ -56,8 +66,6 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
         <button className="btn btn--primary">Send invite</button>
       </form>
       <p className="hint">Use the email they sign in with, and they'll see your request in their circle.</p>
-      <button className="btn btn--quiet" onClick={share}>Share an invite link instead</button>
-      {link && <p className="hint">Copied: <code>{link}</code></p>}
       {note && <p className="ok-note" role="status">{note}</p>}
       <ErrorNote error={error} />
     </section>
@@ -98,6 +106,8 @@ function FriendRow({ f, onChange }: { f: CircleMember; onChange: () => void }) {
 export default function Circle() {
   const { me } = useAuth();
   const { circle, loaded, refreshCircle } = usePresence(me?.id);
+  // Shown while the number isn't linked yet, and kept for this visit so the success message stays.
+  const [showPhoneCard] = useState(() => !me?.phone);
   const incoming = circle.filter((c) => c.friendship_status === "pending" && !c.requested_by_me);
   const outgoing = circle.filter((c) => c.friendship_status === "pending" && c.requested_by_me);
   const friends = circle.filter((c) => c.friendship_status === "accepted");
@@ -105,6 +115,7 @@ export default function Circle() {
   return (
     <div className="page">
       <h1 className="page-title">Your circle</h1>
+      {showPhoneCard && <PhoneVerify compact />}
 
       {incoming.length > 0 && (
         <section className="panel">

@@ -406,3 +406,9 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # Photon calls this directly; it authenticates with PHOTON_WEBHOOK_SECRET instead of a JWT.
 [functions.photon-webhook]
 verify_jwt = false
+
+# Called from the website with the user's session; it checks the session itself by calling
+# start_phone_verification as that user (the gateway's legacy JWT check doesn't support the
+# project's asymmetric signing keys).
+[functions.phone-connect]
+verify_jwt = false
