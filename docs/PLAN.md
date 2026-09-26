@@ -14,6 +14,21 @@ website → POST /v1/check-ins → 30 s hold job → services/fanout → agent/s
 Photon stream (app.messages) → agent/inbound/handler → commands | relay | auto-reply
 ```
 
+### Scope: `backend/src/agent/` only
+Other people own the rest of the backend. This plan **only creates or edits files under
+`backend/src/agent/`**. Everything the agent needs from outside (database access, magic links,
+job scheduling, analytics, the call from fan-out) is expressed as a **port**: a TypeScript
+interface defined in `agent/ports.ts` and passed into `createAgent()`. The agent ships with
+in-memory fakes for tests; the backend owners supply the real implementations (see
+[Handoffs](#handoffs-to-the-backend-owners)).
+
+- May **import** (read-only) from `src/domain/` (e.g. `MOODS`); never edit it.
+- Tests live next to the code as `agent/**/*.test.ts` (vitest's default glob finds them), not in `backend/test/`.
+- Agent config (`PHOTON_PROJECT_ID`, `PHOTON_PROJECT_SECRET`, `AGENT_MODE`) is read by `agent/config.ts`, not `src/config.ts`.
+- Phase 0 changed four shared files before this scope was set, trimmed to what the agent needs:
+  `backend/package.json` / `package-lock.json` (agent dependencies only), `.env.example` (Photon
+  variables) and `.github/workflows/ci.yml` (backend job on Node 22). Let the backend owners know.
+
 ### Current state (as of 2026-09-26)
 - Every file in `backend/src/agent/` is a one-line comment stub. `backend/package.json` has **no
   dependencies**; `src/index.ts`, `config.ts`, `db/client.ts` are stubs too.
@@ -56,69 +71,83 @@ Tested against the project's **shared** iMessage line +1 (415) 579-6445 with tes
 - **SMS:** no SMS *sending* provider in the SDK; `sender.service` can report SMS but we cannot choose it.
 
 ## Design principles
-1. **Agent owns messaging only.** Fan-out, audience resolution and authorization stay in
-   `services/`. The agent receives already-authorized `(recipientId, checkInIds[])` jobs.
-2. **Provider interface isolates Photon** (`providers/types.ts`) so providers are swappable
+1. **Agent owns messaging only.** Fan-out, audience resolution and authorization stay outside
+   `agent/`. The agent receives already-authorized `(recipientId, checkInId)` calls.
+2. **Ports, not imports.** The agent never imports `db/`, `services/`, `jobs/` or `routes/`; it talks
+   to them through the interfaces in `agent/ports.ts`, so it builds and tests on its own.
+3. **Provider interface isolates Photon** (`providers/types.ts`) so providers are swappable
    (PRD risk mitigation) and tests use a fake.
-3. **Templates are pure functions**, so the FR-D3 lint (label first, magic link last) is a unit test.
-4. **Idempotent sends**: one `message_deliveries` row per outbound message, unique idempotency
-   key per batch → zero duplicates on retries.
-5. **Website never depends on Photon**: failures queue and retry; feed delivery is unaffected.
+4. **Templates are pure functions**, so the FR-D3 lint (label first, magic link last) is a unit test.
+5. **Idempotent sends**: every outbound message has an idempotency key per batch; the delivery store
+   refuses a second send with the same key → zero duplicates on retries.
+6. **Website never depends on Photon**: failures are retried; feed delivery is unaffected.
 
-## Module design
+## Module design (all under `backend/src/agent/`)
 
 | File | Responsibility | Exports (sketch) |
 | --- | --- | --- |
-| `providers/types.ts` | `MessagingProvider` interface: `send(address, text, opts) → { providerMessageId }`, `channel` | `MessagingProvider`, `OutboundMessage`, `InboundEvent` |
-| `providers/imessage.ts` | Wrap Spectrum `imessage` provider | `createIMessageProvider(app)` |
+| `ports.ts` (new) | Interfaces the backend implements: `RecipientDirectory`, `DeliveryStore`, `LinkMinter`, `Scheduler`, `ReactionSink`, `Analytics`, `Clock` (see Handoffs) | types only |
+| `fakes.ts` (new) | In-memory implementations of every port + a fake provider, for tests and terminal mode | `createFakes()` |
+| `config.ts` (new) | Read and validate `PHOTON_PROJECT_ID`, `PHOTON_PROJECT_SECRET`, `AGENT_MODE` (`photon` / `terminal`) with zod | `loadAgentConfig(env)` |
+| `providers/types.ts` | `MessagingProvider`: `send(address, text) → { providerMessageId }`, `channel`; `InboundEvent` (text / reaction) | `MessagingProvider`, `InboundEvent` |
+| `providers/imessage.ts` | Wrap Spectrum `imessage`: `space.create(phone)` + `space.send`; map `app.messages` to `InboundEvent`; map "Target not allowed" to a typed `RecipientNotReachable` error | `createIMessageProvider(app)` |
 | `providers/whatsapp.ts` | Wrap Spectrum WhatsApp Business (template-message rules) | `createWhatsAppProvider(app)` |
-| `providers/sms.ts` | SMS fallback — separate vendor (e.g. Twilio) unless Photon confirms support | `createSmsProvider(cfg)` |
-| `index.ts` | Build the Spectrum app from `config.ts`, register providers, expose `send()` and run the inbound `app.messages` loop; `terminal` provider when `AGENT_MODE=terminal` | `createAgent(config)` |
-| `templates/labels.ts` | Label catalog from PRD (mood, CLOSE CIRCLE, JUST FOR YOU, 3 UPDATES, BRUSHING NOW, EDITED, REACTION, REPLY, CODE, INVITE, DIGEST, POST ON THE WEB) built from `domain/moods.ts` | `label(kind, params)` |
-| `templates/messages.ts` | Render full messages: `[label] body\n<cta> → <magic link>`; never includes other recipients' names | `renderUpdate`, `renderBatch`, `renderInvite`, `renderCode`, … |
-| `routing/channel-router.ts` | Pick channel from `users.preferred_channel` + `channel_identities`; skip opted-out / `web`-only | `resolveChannel(userId)` |
-| `routing/batcher.ts` | Per-recipient 60 s window (BullMQ delayed job keyed by recipient), ≤ 3 updates per message, ≤ 6 update messages/day, quiet hours → hold until `quiet_end` | `enqueueUpdate(recipientId, checkInId)` |
-| `send-update.ts` | Batch job worker: load check-ins, re-check status (skip undone/deleted), render, send, record | `sendUpdateBatch(job)` |
-| `send-invite.ts` | One `[👋 INVITE]` per invitee per 30 days (FR-S1) | `sendInvite(inviterId, phone)` |
-| `send-*` (new, small) | `sendCode` (OTP, FR-A1), `sendBrushingNow` (1/day, quiet hours, FR-P3), `sendEdited` (FR-C5), `sendReactionNotice` / `sendReplyNotice` (FR-S5) | — |
-| `inbound/handler.ts` | Map sender address → user via `channel_identities`; dispatch | `handleInbound(event)` |
-| `inbound/commands.ts` | `STOP` / `UNSUBSCRIBE` → set `opted_out_at` (FR-D6); `START` → clear; `HELP` → info | `handleCommand` |
-| `inbound/relay.ts` | Tapback on a delivered update → `reactions` row (source `tapback`) + notify author (FR-D7, P1); any other text → one `[ℹ️ POST ON THE WEB]` per 12 h (FR-D5) | `relayTapback`, `autoReply` |
+| `providers/sms.ts` | SMS fallback: separate vendor unless Photon confirms support | `createSmsProvider(cfg)` |
+| `index.ts` | `createAgent({ config, ports })`: build the Spectrum app, register providers, run the inbound loop; `terminal` provider when `AGENT_MODE=terminal`. **Public API:** `deliverCheckIn`, `notifyEdited`, `sendInvite`, `sendCode`, `sendBrushingNow`, `sendReactionNotice`, `sendReplyNotice`, `start`, `stop` | `createAgent` |
+| `templates/labels.ts` | Label catalog from the PRD (mood, CLOSE CIRCLE, JUST FOR YOU, 3 UPDATES, BRUSHING NOW, EDITED, REACTION, REPLY, CODE, INVITE, DIGEST, POST ON THE WEB), built from `domain/moods.ts` | `label(kind, params)` |
+| `templates/messages.ts` | Render full messages: `[label] body\n<cta> → <link>`; never includes other recipients' names | `renderUpdate`, `renderBatch`, `renderInvite`, `renderCode`, … |
+| `routing/channel-router.ts` | Pick a channel from the recipient's preferred channel and identities (via `RecipientDirectory`); skip opted-out / web-only | `resolveChannel(recipient)` |
+| `routing/batcher.ts` | Per-recipient 60 s window (via `Scheduler`), ≤ 3 updates per message, ≤ 6 update messages/day, quiet hours → hold until quiet end | `enqueueUpdate`, `flushBatch` |
+| `send-update.ts` | Batch flush: load check-ins, skip undone/deleted, render, send, record | `sendUpdateBatch` |
+| `send-invite.ts` | One `[👋 INVITE]` per invitee per 30 days (FR-S1) | `sendInvite` |
+| `send-*` (new, small) | `sendCode` (FR-A1), `sendBrushingNow` (1/day, quiet hours, FR-P3), `sendEdited` (FR-C5), `sendReactionNotice` / `sendReplyNotice` (FR-S5) | — |
+| `inbound/handler.ts` | Map sender address → user (via `RecipientDirectory`); dispatch | `handleInbound(event)` |
+| `inbound/commands.ts` | `STOP` / `UNSUBSCRIBE` → opt out (FR-D6); `START` → opt back in; `HELP` → info | `handleCommand` |
+| `inbound/relay.ts` | Tapback → look up the delivery by `target.id` → `ReactionSink` + notify author (FR-D7, P1); any other text → one `[ℹ️ POST ON THE WEB]` per 12 h (FR-D5) | `relayTapback`, `autoReply` |
 
-Supporting changes outside `agent/`:
-- `db/migrations/0002_messaging.sql`: `message_deliveries` (id, recipient_id, channel, check_in_ids uuid[], kind, idempotency_key UNIQUE, provider_message_id, status, error, sent_at), `magic_links` (token_hash, user_id, target_path, expires_at, used_at, revoked_at), `reactions.source`.
-- `services/links.ts` (new): mint signed, 24 h, single-user magic links (FR-W7); `GET /v1/l/:token` redeem route.
-- `routes/webhooks.ts`: not needed while inbound uses `app.messages`; keep the stub for a possible serverless deploy.
-- `services/fanout.ts`: after writing `check_in_recipients`, call `batcher.enqueueUpdate` per recipient.
-- `config.ts`: validate `PHOTON_PROJECT_ID`, `PHOTON_PROJECT_SECRET` (rename from `PHOTON_API_KEY` to match SDK), `PUBLIC_LINK_BASE_URL`, `AGENT_MODE`.
-- `domain/analytics.ts`: add `message_sent`, `message_failed`, `message_link_opened`, `stop_received`, `channel_disabled`.
+## Handoffs to the backend owners
+The agent defines these; someone outside `agent/` implements and wires them.
 
-## Phases
+| Port / hook | What the agent needs | Likely owner file |
+| --- | --- | --- |
+| `RecipientDirectory` | `getRecipient(userId)` (display name, timezone, quiet hours, preferred channel, identities + opt-out state), `findByAddress(channel, address)`, `setOptOut(channel, address, at \| null)` | `db/`, `users` + `channel_identities` |
+| `DeliveryStore` | `claim(idempotencyKey, row)` (fails on duplicate), `markSent(id, providerMessageId)`, `markFailed(id, error)`, `findByProviderMessageId(id)`, `countToday(recipientId, kind)`, `lastSentAt(recipientId, kind)` | migration `0002`: `message_deliveries` table |
+| `CheckInReader` | `getCheckIns(ids)` → author name, mood, scope, text, audience type, status | `services/check-ins.ts` |
+| `LinkMinter` | `mint(userId, targetPath)` → short signed URL (24 h, single user, FR-W7) | `services/links.ts` + `magic_links` table + redeem route |
+| `Scheduler` | `schedule(key, runAt, payload)` / `cancel(key)`; calls back `agent.flushBatch(key)` | `jobs/queues.ts` (BullMQ) |
+| `ReactionSink` | `recordReaction({ fromUserId, checkInId, kind, source: "tapback" })` | `routes/reactions.ts` / `reactions.source` column |
+| `Analytics` | `track(event, props)` for `message_sent`, `message_failed`, `message_link_opened`, `stop_received`, `channel_disabled` | `domain/analytics.ts` |
+| **Call-in** | `services/fanout.ts` calls `agent.deliverCheckIn(checkInId, recipientIds)` after writing `check_in_recipients`; auth, invites, reactions, presence call the other `send*` methods | `services/`, `routes/`, `realtime/` |
+| **Startup** | `src/index.ts` calls `createAgent({ config, ports })` and `agent.start()` | `src/index.ts` |
+
+## Phases (all work inside `agent/`)
 
 | # | Phase | Deliverables | Done when |
 | --- | --- | --- | --- |
-| 0 | **Spike + tooling** ✅ | Spike done (see Photon facts). Installed `spectrum-ts`, `@spectrum-ts/imessage`, `pg`, `bullmq`, `ioredis`, `zod` 4; dev: `typescript`, `tsx`, `vitest` 5, `@types/node`, `@types/pg`. `package-lock.json` committed. Backend CI moved to Node 22 (vitest 5 needs ≥ 22.12). `.env.example` uses `PHOTON_PROJECT_ID` / `PHOTON_PROJECT_SECRET`. | ✅ `npm ci && npm run build && npm test` pass in `backend/` |
-| 1 | **Templates + labels** | `labels.ts`, `messages.ts`, `test/templates.test.ts` (every template starts with a catalog label and ends with a link; no recipient names leak) | Tests green in CI |
-| 2 | **Providers + agent core** | `types.ts`, `imessage.ts`, `whatsapp.ts`, fake provider for tests, `index.ts` with terminal mode | `AGENT_MODE=terminal` prints a rendered update |
-| 3 | **Data + links** | Migration `0002`, `services/links.ts`, redeem route | Link opens the target screen signed in; expired/revoked link rejected |
-| 4 | **Outbound update path** | `channel-router.ts`, `batcher.ts`, `send-update.ts`, fan-out wiring | Post on website → labelled iMessage within 5 s p95 after hold; 3 posts within 60 s → one `[📦 3 UPDATES]`; retries produce no duplicate |
-| 5 | **Other outbound** | invite, code, brushing-now, edited, reaction/reply notices; caps + quiet hours | Caps and quiet hours covered by tests |
-| 6 | **Inbound** | `app.messages` loop, `handler.ts`, `commands.ts`, `relay.ts` (auto-reply now; tapbacks behind a P1 flag) | STOP stops all channel delivery immediately while web feed still works; replies get ≤ 1 auto-response per 12 h; inbound text never creates a check-in |
-| 7 | **Fallbacks + hardening** | WhatsApp path, SMS provider, Photon-outage retry (BullMQ backoff), analytics events, stub-comment and README cleanup | Photon down → website unaffected, messages send on recovery |
+| 0 | **Spike + tooling** ✅ | Spike done (see Photon facts). Installed only what the agent uses: `spectrum-ts`, `@spectrum-ts/imessage`, `zod` 4; dev: `typescript`, `tsx`, `vitest` 5, `@types/node`. (`pg`, `bullmq`, `ioredis` are left to the backend owners.) `package-lock.json` committed. Backend CI moved to Node 22 (vitest 5 needs ≥ 22.12). `.env.example` uses `PHOTON_PROJECT_ID` / `PHOTON_PROJECT_SECRET`. | ✅ `npm ci && npm run build && npm test` pass in `backend/` |
+| 1 | **Templates + labels** | `templates/labels.ts`, `templates/messages.ts`, `templates/messages.test.ts` (every template starts with a catalog label and ends with a link; no recipient names leak) | Tests green |
+| 2 | **Ports + providers + core** | `ports.ts`, `fakes.ts`, `config.ts`, `providers/types.ts`, `providers/imessage.ts`, `index.ts` with terminal mode | `AGENT_MODE=terminal` prints a rendered update; the iMessage provider sends to the test phone |
+| 3 | **Outbound update path** | `routing/channel-router.ts`, `routing/batcher.ts`, `send-update.ts` | With fakes: 3 check-ins within 60 s → one `[📦 3 UPDATES]`; a retried batch sends once; caps and quiet hours hold messages |
+| 4 | **Other outbound** | invite, code, brushing-now, edited, reaction/reply notices | Caps covered by tests; "Target not allowed" surfaces as `RecipientNotReachable` |
+| 5 | **Inbound** | `inbound/handler.ts`, `commands.ts`, `relay.ts` | With fakes: STOP opts out immediately; replies get ≤ 1 auto-response per 12 h; tapback on a delivered update reaches `ReactionSink`; inbound text never creates a check-in |
+| 6 | **Fallbacks + hardening** | `providers/whatsapp.ts`, `providers/sms.ts`, retry with backoff when Photon is down, analytics calls, fix stale FR IDs in agent stub comments | Provider failure → retried, never duplicated |
+
+Integration with the real database, queue and fan-out happens when the backend owners implement
+the ports; the agent's fakes define the expected behavior.
 
 ## Testing and verification
-- **Unit (vitest)**: templates, labels, channel router, batcher window/caps/quiet hours, command parsing — all with the fake provider; no network.
-- **Integration**: `docker compose up -d` (Postgres + Redis); run fan-out → batcher → `send-update` against the fake provider; assert `message_deliveries` rows and idempotency under a forced retry.
-- **Local manual**: `AGENT_MODE=terminal npm run dev`, post a check-in from the frontend, watch the rendered message in the terminal.
-- **Staging**: real Photon test line + 2 test phones; verify iMessage delivery, magic link, reply auto-response, STOP/START, and WhatsApp for a non-iMessage number.
+- **Unit (vitest, `agent/**/*.test.ts`)**: templates, labels, channel router, batcher window/caps/quiet hours, command parsing, relay: all with `fakes.ts`; no network, no database.
+- **Local manual**: a small script in `agent/` (e.g. `agent/dev.ts`) that creates the agent with fakes and `AGENT_MODE=terminal`, then calls `deliverCheckIn` and prints the message.
+- **Live Photon**: the same script with `AGENT_MODE=photon` against the shared line and the test phone (+1 763-406-0903): delivery, tapback relay, reply auto-response, STOP/START.
+- **Integration** (backend owners, after ports are real): `docker compose up -d`, post on the website, see the iMessage within 5 s p95 after the hold.
 
 ## Open questions
-- **Blocker for invites and sign-in codes — ask Photon:** a recipient must text the line before the
+- **Blocker for invites and sign-in codes, ask Photon:** a recipient must text the line before the
   agent can message them ("Target not allowed for this project"). Does a dedicated line allow
   agent-initiated first messages to new numbers? If not, `[👋 INVITE]` and `[🔑 CODE]` need another
-  path (e.g. the invite link is shared by the inviter; the code goes by SMS vendor), and sign-up must
+  path (e.g. the inviter shares the invite link; the code goes by an SMS vendor), and sign-up must
   ask users to text the line once to turn on iMessage delivery.
 - Does Photon provide SMS, or do we add a separate SMS vendor? (No SMS sending provider in the SDK.)
 - Dedicated Photon line per user or a shared pool? (PRD open question; affects `index.ts` routing.)
-- Skip the iMessage copy if the recipient already saw the update on the web? (PRD open question; affects `send-update.ts` — default: always send.)
-- HTTP framework for `src/index.ts` (Hono recommended — first-party Spectrum adapter, Web `Request` API).
+- Skip the iMessage copy if the recipient already saw the update on the web? (PRD open question; affects `send-update.ts`; default: always send.)
+- Port shapes need a quick review with the backend owners before Phase 3, so the real implementations match.
