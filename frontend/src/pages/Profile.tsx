@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
+import { clearPhoneProblem, peekPhoneProblem } from "../lib/pendingPhone";
+import { formatPhone } from "../lib/phone";
 import type { Channel, Settings } from "../types/api";
 import "../styles/pop.css";
 
@@ -16,9 +18,14 @@ export default function Profile() {
   const { me, refreshMe, signOut } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState(me?.display_name ?? "");
-  const [phone, setPhone] = useState(me?.phone ?? "");
+  // A number from sign-up that couldn't be saved opens the phone field with it and the reason.
+  const [phoneProblem] = useState(peekPhoneProblem);
+  const [phone, setPhone] = useState(phoneProblem?.phone ?? me?.phone ?? "");
+  const [editingPhone, setEditingPhone] = useState(!!phoneProblem || !me?.phone);
   const [ok, setOk] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(phoneProblem?.error ?? null);
+
+  useEffect(() => { if (phoneProblem) clearPhoneProblem(); }, [phoneProblem]);
 
   if (!me) return null;
   const s = me.settings;
@@ -30,8 +37,23 @@ export default function Profile() {
       await fn();
       await refreshMe();
       setOk(`${what} saved`);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
+    }
+  };
+
+  const savePhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await save(() => api.setMyPhone(phone), "Phone number")) setEditingPhone(false);
+  };
+
+  const removePhone = async () => {
+    if (!confirm("Remove your number? You'll only see friends' updates on the website.")) return;
+    if (await save(() => api.setMyPhone(""), "Phone number")) {
+      setPhone("");
+      setEditingPhone(true);
     }
   };
 
@@ -80,21 +102,38 @@ export default function Profile() {
 
         <section className="pop-set__panel">
           <h2 className="pop-set__panel-title">Your phone number</h2>
-          <form className="pop-set__field" onSubmit={(e) => { e.preventDefault(); save(() => api.setMyPhone(phone), "Phone number"); }}>
-            <label className="pop-set__label" htmlFor="phone">So the agent can text you your friends' updates</label>
-            <input id="phone" className="pop-set__input" type="tel" inputMode="tel" autoComplete="tel"
-              placeholder="(555) 010-2233" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <div className="pop-set__row">
-              <button type="submit" className="pop-set__btn pop-set__btn--primary">Save number</button>
-              {me.phone && (
-                <button type="button" className="pop-set__btn pop-set__btn--ghost"
-                  onClick={() => { setPhone(""); save(() => api.setMyPhone(""), "Phone number"); }}>Remove</button>
-              )}
-            </div>
-          </form>
-          <p className="pop-set__meta">
-            {me.phone ? `Connected as ${me.phone}.` : "Without a number you'll only see updates on the website."}
-          </p>
+          {me.phone && !editingPhone ? (
+            <>
+              <p className="pop-set__phone">{formatPhone(me.phone)}</p>
+              <div className="pop-set__row">
+                <button type="button" className="pop-set__btn pop-set__btn--primary"
+                  onClick={() => { setPhone(me.phone ?? ""); setOk(null); setError(null); setEditingPhone(true); }}>
+                  Edit number
+                </button>
+                <button type="button" className="pop-set__btn pop-set__btn--ghost" onClick={removePhone}>Remove</button>
+              </div>
+              <p className="pop-set__meta">Friends' updates are texted here in iMessage.</p>
+            </>
+          ) : (
+            <form className="pop-set__field" onSubmit={savePhone}>
+              <label className="pop-set__label" htmlFor="phone">So the agent can text you your friends' updates</label>
+              <input id="phone" className="pop-set__input" type="tel" inputMode="tel" autoComplete="tel" required
+                autoFocus={!!me.phone} placeholder="(555) 010-2233" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <div className="pop-set__row">
+                <button type="submit" className="pop-set__btn pop-set__btn--primary">Save number</button>
+                {me.phone && (
+                  <button type="button" className="pop-set__btn pop-set__btn--ghost"
+                    onClick={() => { setError(null); setEditingPhone(false); }}>Cancel</button>
+                )}
+              </div>
+              <p className="pop-set__meta">
+                {me.phone
+                  ? "The new number replaces the old one."
+                  : "Without a number you'll only see updates on the website."}{" "}
+                Toothbrush Connect texts you a welcome within a few seconds.
+              </p>
+            </form>
+          )}
         </section>
 
         <section className="pop-set__panel">

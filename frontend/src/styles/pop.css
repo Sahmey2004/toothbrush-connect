@@ -810,6 +810,7 @@ body.pop-body { background: var(--space, #0f0f12); }
 .pop-set__select:focus { outline: none; border-color: var(--aqua); }
 .pop-set__row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .pop-set__meta { margin: 0; font-size: 13px; color: var(--ink-mute); }
+.pop-set__phone { margin: 0; font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: 0.01em; }
 .pop-set__btn {
   height: 50px;
   padding: 0 22px;

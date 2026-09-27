@@ -4,7 +4,7 @@ import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { useSession } from "../hooks/useSession";
 import { useWakeLock } from "../hooks/useWakeLock";
-import { clearPendingPhone, peekPendingPhone } from "../lib/pendingPhone";
+import { clearPendingPhone, peekPendingPhone, savePhoneProblem } from "../lib/pendingPhone";
 import { BrushContext } from "./BrushContext";
 
 // Wraps /start and the pop app so one brush session lives across them: you start on /start,
@@ -15,14 +15,17 @@ export function BrushLayout() {
   useWakeLock(!!brush.session);
 
   // A phone entered during sign-up (before auth) is saved here once signed in. Optional:
-  // nothing stashed → nothing happens; an existing number is left alone.
+  // nothing stashed → nothing happens; an existing number is left alone. If saving fails, Profile
+  // shows the number and the reason so it can be fixed.
   useEffect(() => {
     if (!me) return;
     const phone = peekPendingPhone();
     if (!phone) return;
     clearPendingPhone();
     if (me.phone) return;
-    api.setMyPhone(phone).then(() => refreshMe()).catch(() => {});
+    api.setMyPhone(phone)
+      .then(() => refreshMe())
+      .catch((e) => savePhoneProblem(phone, e instanceof Error ? e.message : String(e)));
   }, [me, refreshMe]);
 
   return (

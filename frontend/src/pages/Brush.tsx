@@ -102,7 +102,8 @@ export default function Brush() {
     try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
   }, []);
 
-  const post = (mood: Mood) => guard(async () => {
+  // A mood tap posts at once (with the line, if any); Send posts just the line, no mood.
+  const post = (mood: Mood | null) => guard(async () => {
     haptics.tap();
     setCheckIn(await api.postCheckIn(mood, scope, line, override));
   });
@@ -241,6 +242,11 @@ export default function Brush() {
           <ScopeToggle value={scope} onChange={setScope} />
           <AddLine value={line} onChange={setLine} />
         </div>
+        {line.trim() && (
+          <button className="btn btn--primary btn--big composer__send" onClick={() => post(null)} disabled={busy}>
+            Send
+          </button>
+        )}
       </div>
     );
   }
