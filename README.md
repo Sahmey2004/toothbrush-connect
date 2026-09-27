@@ -1,4 +1,4 @@
-# Toothbrush Connect
+# Moonbrush Connect
 
 A website that turns the two minutes you spend brushing your teeth into a check-in with hometown friends. You post an update on the site; after the 30 s delivery hold, the backend's messaging agent sends it to each friend over iMessage via Photon Spectrum (WhatsApp / SMS as fallback).
 

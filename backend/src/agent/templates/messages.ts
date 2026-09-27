@@ -104,15 +104,15 @@ export function renderReply(p: { fromName: string; text: string }, link: string)
   return compose(label({ kind: "reply" }), `${name(p.fromName)}: ${q}`, "Reply", link);
 }
 
-// [🔑 CODE] 123456 is your Toothbrush Connect code.
+// [🔑 CODE] 123456 is your Moonbrush Connect code.
 export function renderCode(p: { code: string }, link: string): string {
   if (!/^\d{4,8}$/.test(p.code)) throw new Error("sign-in code must be 4–8 digits");
-  return compose(label({ kind: "code" }), `${p.code} is your Toothbrush Connect code. Don't share it.`, "Or open", link);
+  return compose(label({ kind: "code" }), `${p.code} is your Moonbrush Connect code. Don't share it.`, "Or open", link);
 }
 
-// [👋 INVITE] Priya invited you to Toothbrush Connect: check in with friends while you brush.
+// [👋 INVITE] Priya invited you to Moonbrush Connect: check in with friends while you brush.
 export function renderInvite(p: { inviterName: string }, link: string): string {
-  const body = `${name(p.inviterName)} invited you to Toothbrush Connect: check in with friends while you brush.`;
+  const body = `${name(p.inviterName)} invited you to Moonbrush Connect: check in with friends while you brush.`;
   return compose(label({ kind: "invite" }), body, "Join", link);
 }
 
@@ -149,7 +149,7 @@ export function renderNothingPending(link: string): string {
 // First message to someone who signed up with their phone: it starts the thread on their Photon line, so they
 // never need to know which number to text.
 export function renderWelcome(link: string): string {
-  const body = "You're set up for Toothbrush Connect. Friends' updates will arrive here. Text STOP to opt out.";
+  const body = "You're set up for Moonbrush Connect. Friends' updates will arrive here. Text STOP to opt out.";
   return compose(label({ kind: "post_on_web" }), body, "Post yours on the website", link);
 }
 

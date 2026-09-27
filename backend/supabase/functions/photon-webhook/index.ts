@@ -18,7 +18,7 @@ interface Inbound {
 function replyFor(action: string, names: string[]): string | null {
   switch (action) {
     case "stopped":
-      return "[👋 INVITE] You won't get more messages from Toothbrush Connect. Text START to come back.";
+      return "[👋 INVITE] You won't get more messages from Moonbrush Connect. Text START to come back.";
     case "started":
       return `[👋 INVITE] Welcome back. Friends' updates will arrive here again. Brush with them at ${SITE_URL}`;
     case "joined":

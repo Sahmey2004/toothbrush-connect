@@ -268,7 +268,7 @@ export default function Landing() {
         <nav className="pop-nav">
           <Link className="pop-brand" to="/">
             <BrandMark />
-            <span className="pop-brand__word">toothbrush connect</span>
+            <span className="pop-brand__word">moonbrush connect</span>
           </Link>
           <button type="button" className="pop-login" onClick={doSignIn}>Log in</button>
         </nav>

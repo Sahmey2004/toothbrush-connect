@@ -34,7 +34,7 @@ describe("inbound handler", () => {
     const { handle, sent } = setup({ action: "verified" });
     await handle(text("Verify 123456"));
     expect(sent[0].address).toBe(ME);
-    expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./);
+    expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Moonbrush Connect\./);
     expect(sent[0].text).toMatch(/→ http:\/\/localhost:5173\/start$/);
   });
 

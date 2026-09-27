@@ -148,6 +148,12 @@ describe("messages", () => {
     expect(renderCodeProblem("phone_taken", LINK)).toMatch(/already on another account/);
   });
 
+  it("call the app Moonbrush Connect", () => {
+    const named = [renderWelcome(LINK), renderInvite({ inviterName: "Priya" }, LINK), renderCode({ code: "123456" }, LINK)];
+    for (const m of named) expect(m).toContain("Moonbrush Connect");
+    for (const [, m] of samples) expect(m).not.toMatch(/toothbrush connect/i);
+  });
+
   it("reject malformed sign-in codes", () => {
     expect(() => renderCode({ code: "12ab" }, LINK)).toThrow();
   });

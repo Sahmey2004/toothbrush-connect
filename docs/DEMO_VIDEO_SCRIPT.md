@@ -1,4 +1,4 @@
-# Toothbrush Connect — 3-Minute Demo Video Script
+# Moonbrush Connect — 3-Minute Demo Video Script
 
 Built on `docs/Demo_ideas` (intro option 2, the "problem first" open), `docs/PRD.md` and what the app already does.
 Visual flow of this script: see the [published storyboard](https://claude.ai/artifact/DGcLotdDpX8PM4yvSVrbKz) (private until
@@ -9,7 +9,7 @@ shared), or the HTML source at `docs/demo-video-flow.html`.
 ## 0. The concept: miles apart, same moon
 
 **Theme.** Growing up means leaving home for your own adventure: college, a career, a family. The adventure is
-exciting, but every mile adds distance between you and the friends who knew you first. Toothbrush Connect keeps
+exciting, but every mile adds distance between you and the friends who knew you first. Moonbrush Connect keeps
 those friends close, and brings them along on the journey.
 
 **Motif: "Brush me to the moon."** The app already has this built in: the brush timer is a moon that waxes from
@@ -114,8 +114,8 @@ Format: **VISUAL** is what the camera or screen shows. **ON-SCREEN** is text bur
 **Beat 4 · The reveal · 0:20–0:30**
 
 - **VISUAL:** Maya's bathroom at night, a window with the moon in it. She's brushing her teeth, phone propped on the sink showing the app's moon and toothbrush rocket: *Ready for liftoff.* Slow push-in on the phone.
-- **ON-SCREEN:** "Same moon. Two minutes. Twice a day." then the Toothbrush Connect logo and **Fly to the moon. Bring your friends.**
-- **VO (36 words):** "But no matter how far apart we are, we all look up at the same moon, and we all brush our teeth. Toothbrush Connect turns those two minutes into a trip to the moon, with your friends on board."
+- **ON-SCREEN:** "Same moon. Two minutes. Twice a day." then the Moonbrush Connect logo and **Fly to the moon. Bring your friends.**
+- **VO (36 words):** "But no matter how far apart we are, we all look up at the same moon, and we all brush our teeth. Moonbrush Connect turns those two minutes into a trip to the moon, with your friends on board."
 
 ### ACT 2 — THE PRODUCT (0:30–2:00)
 
@@ -126,7 +126,7 @@ colour (e.g. aqua tag: *Maya · 21 · student · Boston*).
 
 | Time | VISUAL (screen recording) | VO |
 | --- | --- | --- |
-| 0:30–0:37 | Taps the home-screen icon. The site opens full screen: *Ready for liftoff.* She taps; the toothbrush rocket starts its orbit and the new moon begins to fill. | "Maya opens Toothbrush Connect from her home screen. It's a website, so there's nothing to install. One tap, and her toothbrush rocket lifts off." |
+| 0:30–0:37 | Taps the home-screen icon. The site opens full screen: *Ready for liftoff.* She taps; the toothbrush rocket starts its orbit and the new moon begins to fill. | "Maya opens Moonbrush Connect from her home screen. It's a website, so there's nothing to install. One tap, and her toothbrush rocket lifts off." |
 | 0:37–0:45 | Mood chips appear in the thumb zone. She taps **Stressful**, then *Add a line* and dictates *"midterms week, send snacks 😭"*. | "One tap shares her mood, and she can dictate a line. No typing with a toothbrush in her hand." |
 | 0:45–0:52 | Taps the audience chip *Everyone ▾*, picks the **Close 3** list. Snackbar: *Sending to Close 3 in 30s · Change · Undo*. | "She chooses her crew for this flight, just her closest three, and has thirty seconds to change her mind." |
 | 0:52–1:00 | Friend cards float in above the moon: Priya *FUN · this week: "Tokyo is unreal"*, Tom *BORING · today: "night shift #4"*. Jump cut (label "2 min later"): the moon is full. *Full moon. Done.* *You caught up with 3 friends.* | "As the moon fills, her friends' news comes to her. Full moon: two minutes, and she's caught up." |
@@ -135,7 +135,7 @@ colour (e.g. aqua tag: *Maya · 21 · student · Boston*).
 
 **Beat 6 · Priya, halfway around the world · 1:00–1:20**
 
-- **VISUAL:** Establishing shot: Tokyo skyline, morning, with a pale daytime moon (stock footage is fine). Priya in her hotel room, getting ready for work. Phone lights up. Screen recording of the real iMessage thread with Toothbrush Connect:
+- **VISUAL:** Establishing shot: Tokyo skyline, morning, with a pale daytime moon (stock footage is fine). Priya in her hotel room, getting ready for work. Phone lights up. Screen recording of the real iMessage thread with Moonbrush Connect:
 
   ```
   [💌 JUST FOR YOU · STRESSFUL] Maya: "midterms week, send snacks 😭"

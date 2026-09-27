@@ -242,7 +242,7 @@ export function SignupInvite() {
     const text = `${name} wants to catch up while brushing. Join: ${inviteLink}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Toothbrush Connect", text, url: inviteLink });
+        await navigator.share({ title: "Moonbrush Connect", text, url: inviteLink });
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(inviteLink);
         setShared(true);

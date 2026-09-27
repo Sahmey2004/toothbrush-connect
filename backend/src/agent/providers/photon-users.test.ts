@@ -117,7 +117,7 @@ describe("agent contact sync", () => {
     await agent.syncContacts();
     // Hwaejin was already on Photon; invited Ravi gets the invite instead.
     expect(sent.map((s) => s.address)).toEqual(["+13145550101"]);
-    expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./);
+    expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Moonbrush Connect\./);
     expect(sent[0].text).toMatch(/→ http:\/\/localhost:5173\/start$/);
   });
 

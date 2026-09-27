@@ -67,7 +67,7 @@ export function PopShell() {
               <circle cx="12" cy="18" r="2.6" fill="#17171C" />
               <circle cx="21" cy="18" r="2.6" fill="#17171C" />
             </svg>
-            toothbrush connect
+            moonbrush connect
           </NavLink>
           <NavLink to="/profile" className={meClass} aria-label="Profile and settings">
             {initial}
