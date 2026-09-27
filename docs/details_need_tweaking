@@ -1,0 +1,33 @@
+# Detail tweaks
+
+Notes on changes to the brush session and the moon journey. Items 3 and 5 are still open.
+
+## 1. Make the text bar the main input, not the mood buttons
+
+- The mood buttons shouldn't take up most of the session screen.
+- Replace them with a text bar as the main input.
+- Tapping the bar gives two choices:
+  - **Main option:** type a short phrase and submit it.
+  - **Smaller option:** skip typing and just submit one of the existing moods.
+
+## 2. Keep the phrase short so people don't overthink it
+
+- The phrase box should encourage a quick, off-the-cuff answer, and even be set up on purpose to stop overthinking.
+- Limit it to about **50 characters**. A short box takes away the pressure of writing something good, so nothing stops people from posting.
+
+## 3. Milestones and resetting the moon journey (to decide)
+
+- Where do the milestones go along the way, and how many are there?
+- What happens after the crew lands on the moon: does the journey reset to Earth, go to a new destination, or something else?
+
+## 4. Let people skip the timer ("I already brushed this morning")
+
+- Add a way to cut the timer short, e.g. "I already brushed this morning".
+- Skipping takes you straight to posting your own update.
+- The nav bar appears once you've posted.
+
+## 5. Count journey progress from one-to-one sharing (still being worked out)
+
+- The rocket should move based on sharing between pairs of friends, not on a crew total.
+- Example: you share to everyone and Friend A shares to everyone. You both get some progress, both for sending your own update and for receiving theirs.
+- Still to decide: how much progress sending and receiving each give.
