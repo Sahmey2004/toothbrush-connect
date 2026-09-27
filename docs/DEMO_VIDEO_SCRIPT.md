@@ -12,7 +12,7 @@ shared), or the HTML source at `docs/demo-video-flow.html`.
 exciting, but every mile adds distance between you and the friends who knew you first. Toothbrush Connect keeps
 those friends close, and brings them along on the journey.
 
-**Motif: "Fly me to the moon."** The app already has this built in: the brush timer is a moon that waxes from
+**Motif: "Brush me to the moon."** The app already has this built in: the brush timer is a moon that waxes from
 new moon to full moon over two minutes, a toothbrush rocket orbits it, and the start screen reads *Ready for
 liftoff*. The video builds its story on it:
 

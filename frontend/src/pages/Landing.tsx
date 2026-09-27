@@ -278,7 +278,7 @@ export default function Landing() {
             <div className="pop-hero__copy">
               <span className="pop-eyebrow">Two minutes for the friends you miss</span>
               <h1 className="pop-hero__title">
-                Fly me to<br />the moon.
+                Brush me to<br />the moon.
               </h1>
               <p className="pop-hero__lede">
                 Start your brush timer, share how today's going in one tap, then catch up on your
