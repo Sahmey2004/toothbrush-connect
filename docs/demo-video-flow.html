@@ -1,0 +1,549 @@
+<title>Toothbrush Connect Demo Storyboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Single deliberate look: the app's "pop" identity (cosmic dark + toy trio). */
+  :root {
+    color-scheme: dark;
+    --space: #0f0f12;
+    --space-2: #16161c;
+    --space-3: #1e1e26;
+    --line: rgba(255,255,255,0.12);
+    --line-strong: rgba(255,255,255,0.24);
+    --ink: #ffffff;
+    --ink-soft: rgba(255,255,255,0.68);
+    --ink-mute: rgba(255,255,255,0.5);
+    --maya: #6fe0e8;
+    --priya: #f272d8;
+    --tom: #ffe27a;
+    --on-bright: #14141a;
+    --act1: #3a3a48;
+    --act2: #4b4b5e;
+    --act3: #33333f;
+    --act4: #42424f;
+    --disp: "Bagel Fat One", "Figtree", ui-rounded, system-ui, sans-serif;
+    --ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "DM Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--space);
+    color: var(--ink);
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.55;
+    padding: 40px 20px 72px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 56px; }
+  h1, h2 { font-family: var(--disp); font-weight: 400; margin: 0; text-wrap: balance; letter-spacing: 0.01em; }
+  h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.02; }
+  h2 { font-size: clamp(24px, 3.4vw, 32px); line-height: 1.1; }
+  h3 { margin: 0; font-size: 17px; font-weight: 700; }
+  p { margin: 0; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); }
+  .lede { color: var(--ink-soft); max-width: 62ch; font-size: 17px; }
+  .tc { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  section { display: grid; gap: 20px; }
+  .sec-head { display: grid; gap: 8px; }
+
+  /* Header */
+  header { display: grid; gap: 18px; }
+  .formula { display: flex; flex-wrap: wrap; gap: 8px; }
+  .formula span { font-family: var(--mono); font-size: 13px; padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--ink-soft); }
+  .formula b { color: var(--ink); font-weight: 500; }
+
+  /* Ribbon */
+  .ribbon-card { background: var(--space-2); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: grid; gap: 16px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .btn { font: 600 14px var(--ui); color: var(--on-bright); background: var(--tom); border: 0; border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line-strong); }
+  .btn[aria-pressed="true"] { background: var(--ink); color: var(--on-bright); }
+  .btn:focus-visible, .beat-seg:focus-visible, .card:focus-visible { outline: 2px solid var(--maya); outline-offset: 2px; }
+  .clock { font-family: var(--mono); font-size: 22px; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .clock small { color: var(--ink-mute); font-size: 14px; }
+  .scroll-x { overflow-x: auto; padding-bottom: 4px; }
+  .timeline { min-width: 760px; display: grid; grid-template-columns: 92px 1fr; row-gap: 8px; column-gap: 12px; position: relative; }
+  .row-label { font-size: 12px; color: var(--ink-mute); align-self: center; font-weight: 600; }
+  .track { position: relative; height: 34px; }
+  .track.tall { height: 46px; }
+  .seg { position: absolute; top: 0; bottom: 0; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; font-size: 12px; font-weight: 600; overflow: hidden; white-space: nowrap; }
+  .act-seg { color: var(--ink); border: 1px solid var(--line); }
+  .beat-seg { background: var(--space-3); color: var(--ink-soft); border: 1px solid var(--line); cursor: pointer; font: 600 11px var(--ui); text-align: left; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.2; padding: 0 8px; }
+  .beat-seg .tc { font-size: 10px; color: var(--ink-mute); font-weight: 400; }
+  .beat-seg.active { background: var(--ink); color: var(--on-bright); }
+  .beat-seg.active .tc { color: var(--on-bright); }
+  .lane { background: repeating-linear-gradient(90deg, transparent 0 calc(100%/18 - 1px), var(--line) calc(100%/18 - 1px) calc(100%/18)); border-radius: 8px; }
+  .lane .seg { color: var(--on-bright); }
+  .axis { position: relative; height: 18px; font-family: var(--mono); font-size: 11px; color: var(--ink-mute); }
+  .axis span { position: absolute; transform: translateX(-50%); }
+  .axis span:first-child { transform: none; }
+  .axis span:last-child { transform: translateX(-100%); }
+  .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); pointer-events: none; left: 104px; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
+
+  /* Now-playing panel */
+  .now { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; background: var(--space-3); border-radius: 16px; padding: 20px; }
+  .now .vo { font-size: 19px; line-height: 1.5; }
+  .now .vo.none { color: var(--ink-mute); font-style: italic; }
+  .kv { display: grid; gap: 12px; align-content: start; }
+  .kv div { display: grid; gap: 2px; }
+  .kv dt, .kv .k { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-mute); }
+  .now-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+
+  /* Personas */
+  .personas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .persona { border-radius: 18px; padding: 20px; color: var(--on-bright); display: grid; gap: 10px; align-content: start; }
+  .persona.maya { background: var(--maya); }
+  .persona.priya { background: var(--priya); }
+  .persona.tom { background: var(--tom); }
+  .persona .name { font-family: var(--disp); font-size: 30px; line-height: 1; }
+  .persona .role { font-weight: 700; }
+  .persona dl { margin: 0; display: grid; gap: 8px; font-size: 14px; }
+  .persona dt { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; }
+  .persona dd { margin: 0; }
+
+  /* Beat cards */
+  .acts { display: grid; gap: 36px; }
+  .act { display: grid; gap: 14px; }
+  .act-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  .act-head h3 { font-size: 20px; }
+  .act-head .tc { color: var(--ink-mute); font-size: 13px; }
+  .act-head .why { color: var(--ink-soft); font-size: 14px; flex-basis: 100%; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .card { background: var(--space-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; align-content: start; cursor: pointer; }
+  .card.active { border-color: var(--ink); }
+  .card-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .card-top .tc { font-size: 12px; color: var(--ink-mute); }
+  .dots { display: flex; gap: 4px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.maya { background: var(--maya); } .dot.priya { background: var(--priya); } .dot.tom { background: var(--tom); }
+  .card .vo-q { border-left: 2px solid var(--line-strong); padding-left: 12px; color: var(--ink); font-size: 14px; }
+  .card .vo-q.none { color: var(--ink-mute); font-style: italic; }
+  .card .small { font-size: 13px; color: var(--ink-soft); }
+  .msg { font-family: var(--mono); font-size: 12px; background: #0a84ff; color: #fff; border-radius: 16px 16px 16px 4px; padding: 8px 12px; justify-self: start; max-width: 100%; }
+
+  /* Architecture */
+  .arch-card { background: var(--space-2); border: 1px solid var(--line); border-radius: 20px; padding: 20px; }
+  .arch { min-width: 820px; display: block; }
+  .arch text { font-family: var(--ui); }
+
+  /* Split screen mock */
+  .triptych { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .pane { border-radius: 18px; padding: 16px; display: grid; gap: 10px; justify-items: center; text-align: center; background: var(--space-2); border: 2px solid; }
+  .pane.maya { border-color: var(--maya); } .pane.priya { border-color: var(--priya); } .pane.tom { border-color: var(--tom); }
+  .pane .city { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+  .moon { width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f7f5ef, #cbc7ba 70%); display: grid; place-items: center; color: var(--on-bright); font-family: var(--mono); font-weight: 500; font-size: 18px; }
+  .pane .with { font-size: 13px; color: var(--ink-soft); }
+  .tagline { font-family: var(--disp); font-size: clamp(20px, 3vw, 28px); text-align: center; }
+
+  .motif { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .motif div { display: grid; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--space-2); border: 1px solid var(--line); }
+  .motif .k { font-family: var(--mono); font-size: 12px; color: var(--tom); }
+  .motif span:last-child { font-size: 14px; color: var(--ink-soft); }
+  .one-moon { display: flex; justify-content: center; }
+  .one-moon svg { width: min(320px, 100%); height: auto; }
+  .checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .rule { border-top: 2px solid var(--line-strong); padding-top: 12px; display: grid; gap: 4px; }
+  .rule b { font-size: 15px; }
+  .rule span { font-size: 14px; color: var(--ink-soft); }
+
+  footer { color: var(--ink-mute); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
+
+  @media (max-width: 760px) {
+    body { padding-inline: 16px; }
+    .now { grid-template-columns: 1fr; }
+    .personas, .triptych { grid-template-columns: 1fr; }
+    .clock { margin-left: 0; flex-basis: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Hackathon 2026 · demo video storyboard · 3:00</span>
+    <h1>Miles apart.<br>Same moon.</h1>
+    <p class="lede">Three hometown friends, three journeys, one two-minute flight to the moon. This is the flow of the Toothbrush Connect demo video. Press Rehearse to run a real-time playhead with the voice-over as a teleprompter, or click any beat to read it. Full script: <span class="tc">docs/DEMO_VIDEO_SCRIPT.md</span>.</p>
+    <div class="formula">
+      <span><b>0:30</b> problem + solution</span>
+      <span><b>1:30</b> product</span>
+      <span><b>0:30</b> tech</span>
+      <span><b>0:25</b> impact + next</span>
+      <span><b>0:05</b> close</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="concept-h">
+    <div class="sec-head">
+      <span class="eyebrow">The concept</span>
+      <h2 id="concept-h">Fly to the moon. Bring your friends.</h2>
+      <p class="lede">Growing up means leaving home for your own adventure, and every mile puts distance between you and the friends who knew you first. The app already tells this story: the brush timer is a moon that fills from new to full in two minutes while a toothbrush rocket orbits it. The video builds on that.</p>
+    </div>
+    <div class="motif">
+      <div><span class="k">Ready for liftoff</span><span>Every brush is a small launch</span></div>
+      <div><span class="k">Toothbrush rocket</span><span>You, on your journey</span></div>
+      <div><span class="k">New → full moon in 2:00</span><span>Full moon means you're caught up</span></div>
+      <div><span class="k">Brush Buddy moment</span><span>Your crew on board with you</span></div>
+      <div><span class="k">The same moon</span><span>Distance stops mattering</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="flow-h">
+    <div class="sec-head">
+      <span class="eyebrow">The 180-second flow</span>
+      <h2 id="flow-h">Who is on screen, and when</h2>
+    </div>
+    <div class="ribbon-card">
+      <div class="controls">
+        <button class="btn" id="play" type="button">▶ Rehearse (1×)</button>
+        <button class="btn ghost" id="speed" type="button" aria-pressed="false">Preview at 6×</button>
+        <button class="btn ghost" id="reset" type="button">Reset</button>
+        <div class="clock" aria-live="off"><span id="clock">0:00</span> <small>/ 3:00</small></div>
+      </div>
+      <div class="scroll-x">
+        <div class="timeline" id="timeline">
+          <div class="row-label">Act</div><div class="track" id="acts-track"></div>
+          <div class="row-label">Beat</div><div class="track tall" id="beats-track"></div>
+          <div class="row-label" style="color:var(--maya)">Maya · student</div><div class="track lane" id="lane-maya"></div>
+          <div class="row-label" style="color:var(--priya)">Priya · Tokyo</div><div class="track lane" id="lane-priya"></div>
+          <div class="row-label" style="color:var(--tom)">Tom · parent</div><div class="track lane" id="lane-tom"></div>
+          <div></div><div class="axis" id="axis"></div>
+          <div class="playhead" id="playhead"></div>
+        </div>
+      </div>
+      <div class="now" id="now"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="personas-h">
+    <div class="sec-head">
+      <span class="eyebrow">One crew from a Columbus rooftop, three journeys</span>
+      <h2 id="personas-h">Each persona proves one benefit</h2>
+    </div>
+    <div class="personas">
+      <article class="persona maya">
+        <div class="name">Maya, 21</div>
+        <div class="role">College junior · Boston</div>
+        <dl>
+          <div><dt>Her adventure</dt><dd>First time living away from home.</dd></div>
+          <div><dt>Why she drifted</dt><dd>47 unread in the group chat. Jumping back in feels like a chore.</dd></div>
+          <div><dt>In the video</dt><dd>Launches: the full one-tap check-in.</dd></div>
+          <div><dt>Proves</dt><dd>Sharing takes seconds, nothing to type.</dd></div>
+        </dl>
+      </article>
+      <article class="persona priya">
+        <div class="name">Priya, 24</div>
+        <div class="role">Consultant · on assignment in Tokyo</div>
+        <dl>
+          <div><dt>Her adventure</dt><dd>Three months on a project halfway around the world.</dd></div>
+          <div><dt>Why she drifted</dt><dd>13 hours ahead. When she's awake, everyone else is asleep.</dd></div>
+          <div><dt>In the video</dt><dd>Receives: Maya's update reaches her in Tokyo, in iMessage.</dd></div>
+          <div><dt>Proves</dt><dd>Distance and time zones stop mattering.</dd></div>
+        </dl>
+      </article>
+      <article class="persona tom">
+        <div class="name">Tom, 27</div>
+        <div class="role">ICU nurse &amp; dad · Chicago</div>
+        <dl>
+          <div><dt>His adventure</dt><dd>His four-year-old daughter.</dd></div>
+          <div><dt>Why he drifted</dt><dd>When he's free, he's holding a kid.</dd></div>
+          <div><dt>In the video</dt><dd>Boards: a "brushing now" ping, three taps, one hand.</dd></div>
+          <div><dt>Proves</dt><dd>Real-time togetherness at zero effort.</dd></div>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="beats-h">
+    <div class="sec-head">
+      <span class="eyebrow">Beat by beat</span>
+      <h2 id="beats-h">What the camera sees, what the audience hears</h2>
+    </div>
+    <div class="acts" id="acts"></div>
+  </section>
+
+  <section aria-labelledby="split-h">
+    <div class="sec-head">
+      <span class="eyebrow">Beat 8 · 1:40–2:00 · the money shot</span>
+      <h2 id="split-h">Three skies, one moon</h2>
+      <p class="lede">First the real app footage: record all three phones at the same moment so the moons fill in sync, with each showing the other two friends' avatars. Then a motion graphic slides the three moons together into one moon with three rockets orbiting it. Keep that part clearly stylised, because the app itself shows friends as avatars.</p>
+    </div>
+    <div class="triptych">
+      <div class="pane maya"><span class="city">Boston · 9:30 PM</span><div class="moon">1:24</div><strong>Maya</strong><span class="with">Brushing with Priya &amp; Tom 👋</span></div>
+      <div class="pane tom"><span class="city">Chicago · 8:30 PM</span><div class="moon">1:24</div><strong>Tom</strong><span class="with">Brushing with Maya &amp; Priya 😂</span></div>
+      <div class="pane priya"><span class="city">Tokyo · 10:30 AM, next day</span><div class="moon">1:24</div><strong>Priya</strong><span class="with">Brushing with Maya &amp; Tom ❤️</span></div>
+    </div>
+    <div class="one-moon">
+      <svg viewBox="0 0 320 320" role="img" aria-label="One moon with three toothbrush rockets orbiting it in aqua, yellow and pink">
+        <circle cx="160" cy="160" r="128" fill="none" stroke="rgba(255,255,255,0.24)" stroke-width="2" stroke-dasharray="4 8"/>
+        <circle cx="160" cy="160" r="84" fill="#e8e6df"/>
+        <circle cx="132" cy="138" r="12" fill="#cbc7ba"/>
+        <circle cx="186" cy="182" r="18" fill="#cbc7ba"/>
+        <circle cx="178" cy="126" r="7" fill="#cbc7ba"/>
+        <g transform="translate(160 32) rotate(0)"><rect x="-22" y="-7" width="44" height="14" rx="7" fill="#6fe0e8"/><rect x="14" y="-11" width="10" height="22" rx="3" fill="#ffffff"/></g>
+        <g transform="translate(270.9 224) rotate(120)"><rect x="-22" y="-7" width="44" height="14" rx="7" fill="#ffe27a"/><rect x="14" y="-11" width="10" height="22" rx="3" fill="#ffffff"/></g>
+        <g transform="translate(49.1 224) rotate(240)"><rect x="-22" y="-7" width="44" height="14" rx="7" fill="#f272d8"/><rect x="14" y="-11" width="10" height="22" rx="3" fill="#ffffff"/></g>
+      </svg>
+    </div>
+    <p class="tagline">Three skies. One moon.</p>
+  </section>
+
+  <section aria-labelledby="arch-h">
+    <div class="sec-head">
+      <span class="eyebrow">Act 3 · 2:00–2:30</span>
+      <h2 id="arch-h">Mission control: the diagram to animate</h2>
+      <p class="lede">Light up one node per phrase of the voice-over, left to right, then draw the return path.</p>
+    </div>
+    <div class="arch-card scroll-x">
+      <svg class="arch" viewBox="0 0 980 250" role="img" aria-label="Architecture: React PWA to Supabase, 30 second hold, outbox, Node agent, Photon Spectrum, iMessage, with replies returning to the agent">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="rgba(255,255,255,0.6)"/></marker>
+        </defs>
+        <g font-size="13" fill="#fff">
+          <rect x="10" y="60" width="130" height="74" rx="14" fill="#6fe0e8"/>
+          <text x="75" y="92" text-anchor="middle" fill="#14141a" font-weight="700">Website</text>
+          <text x="75" y="112" text-anchor="middle" fill="#14141a" font-size="12">React PWA · TS · Vite</text>
+
+          <rect x="170" y="60" width="150" height="74" rx="14" fill="#1e1e26" stroke="rgba(255,255,255,0.24)"/>
+          <text x="245" y="88" text-anchor="middle" font-weight="700">Supabase</text>
+          <text x="245" y="106" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.68)">Auth · Realtime presence</text>
+          <text x="245" y="122" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.68)">Postgres + RLS</text>
+
+          <rect x="350" y="60" width="120" height="74" rx="14" fill="#1e1e26" stroke="rgba(255,255,255,0.24)"/>
+          <text x="410" y="92" text-anchor="middle" font-weight="700">30 s hold</text>
+          <text x="410" y="112" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.68)">pg_cron</text>
+
+          <rect x="500" y="60" width="120" height="74" rx="14" fill="#1e1e26" stroke="rgba(255,255,255,0.24)"/>
+          <text x="560" y="92" text-anchor="middle" font-weight="700">Outbox</text>
+          <text x="560" y="112" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.68)">fan-out per friend</text>
+
+          <rect x="650" y="60" width="130" height="74" rx="14" fill="#ffe27a"/>
+          <text x="715" y="92" text-anchor="middle" fill="#14141a" font-weight="700">Messaging agent</text>
+          <text x="715" y="112" text-anchor="middle" fill="#14141a" font-size="12">Node · claim_outbound</text>
+
+          <rect x="810" y="20" width="160" height="60" rx="14" fill="#1e1e26" stroke="rgba(255,255,255,0.24)"/>
+          <text x="890" y="46" text-anchor="middle" font-weight="700">Photon Spectrum</text>
+          <text x="890" y="64" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.68)">managed iMessage line</text>
+
+          <rect x="810" y="120" width="160" height="60" rx="14" fill="#f272d8"/>
+          <text x="890" y="146" text-anchor="middle" fill="#14141a" font-weight="700">iMessage</text>
+          <text x="890" y="164" text-anchor="middle" fill="#14141a" font-size="12">friend's phone</text>
+        </g>
+        <g stroke="rgba(255,255,255,0.6)" stroke-width="2" fill="none" marker-end="url(#ah)">
+          <path d="M140 97H166"/>
+          <path d="M320 97H346"/>
+          <path d="M470 97H496"/>
+          <path d="M620 97H646"/>
+          <path d="M780 85L806 60"/>
+          <path d="M890 80V116"/>
+          <path d="M810 170C760 215 730 190 718 138" stroke-dasharray="5 5"/>
+        </g>
+        <text x="660" y="222" font-size="12" fill="rgba(255,255,255,0.68)" font-family="DM Mono, monospace">replies · tapbacks · STOP → agent_handle_inbound</text>
+        <text x="10" y="222" font-size="12" fill="rgba(255,255,255,0.5)" font-family="DM Mono, monospace">post_check_in → hold → fan-out → claim → send</text>
+      </svg>
+    </div>
+  </section>
+
+  <section aria-labelledby="rules-h">
+    <div class="sec-head">
+      <span class="eyebrow">From the research</span>
+      <h2 id="rules-h">Rules this script follows</h2>
+    </div>
+    <div class="checklist">
+      <div class="rule"><b>Say what it is by 0:30</b><span>Judges decide in the first seconds. The pitch line lands with the logo.</span></div>
+      <div class="rule"><b>Story first, features second</b><span>Problem → solution → demo → impact, each with a fixed budget.</span></div>
+      <div class="rule"><b>Skip sign-up</b><span>Open on the Start button. Log-in screens waste judge attention.</span></div>
+      <div class="rule"><b>Demo three features, no more</b><span>One-tap check-in, iMessage delivery, the Brush Buddy moment.</span></div>
+      <div class="rule"><b>Real, not mocked</b><span>Beats 6 and 7 use real iMessages from the Photon line. Jump-cut waits with a "30 s later" label.</span></div>
+      <div class="rule"><b>Audio and captions</b><span>~400 words of VO at a calm pace. Burn in captions; many judges watch muted.</span></div>
+    </div>
+  </section>
+
+  <footer>Sources: Devpost demo-video tips and Help Center, hackathon.com, Nader Dabit's pitch guide, TAIKAI. Full links in docs/DEMO_VIDEO_SCRIPT.md.</footer>
+</div>
+
+<script>
+(function () {
+  var TOTAL = 180;
+  var acts = [
+    { id: 1, name: "1 · Hook & problem", short: "Hook, problem, solution", s: 0, e: 30, color: "var(--act1)", why: "Three friends leave home on their own adventures and drift apart. Name the product and the moon idea by 0:30." },
+    { id: 2, name: "2 · The product", short: "The product: one flight, three passengers", s: 30, e: 120, color: "var(--act2)", why: "One hero liftoff, two short scenarios, then all three under one moon." },
+    { id: 3, name: "3 · Tech", short: "Mission control", s: 120, e: 150, color: "var(--act3)", why: "All technical detail lives here, in one animated diagram." },
+    { id: 4, name: "4 · Impact", short: "Impact & next steps", s: 150, e: 175, color: "var(--act4)", why: "Why it matters and what we build next." },
+    { id: 5, name: "Close", short: "Close", s: 175, e: 180, color: "var(--act1)", why: "Rooftop photo, full moon, tagline, team." }
+  ];
+  var beats = [
+    { n: 1, act: 1, s: 0, e: 6, t: "Rooftop photo", who: ["maya"],
+      visual: "A faded photo: three teens on a Columbus rooftop under a big moon, \"summer 2019\". It's Maya's wallpaper. Priya's text slides over it: \"omg did you hear about Jess?? call me\". Group chat badge at 47. Maya types a reply, pauses, deletes it.",
+      screen: "", vo: "" },
+    { n: 2, act: 1, s: 6, e: 16, t: "Three journeys", who: ["maya", "priya", "tom"],
+      visual: "Map: the Columbus pin splits into three trails to Boston, Chicago and Tokyo. One-second cuts: Maya pockets her phone on campus; Priya flips hers face-down in a Tokyo office at dawn; Tom holds a toddler, phone out of reach.",
+      screen: "", vo: "We all leave home for our own adventure. College. A career. A family. The journey is exciting, but the farther we go, the more our oldest friends drift out of view." },
+    { n: 3, act: 1, s: 16, e: 20, t: "Title card", who: [],
+      visual: "A night sky with the moon alone. Unread counter ticks 47 → 48. One ping, music starts.",
+      screen: "MILES APART. OUT OF TOUCH?", vo: "" },
+    { n: 4, act: 1, s: 20, e: 30, t: "Same moon", who: ["maya"],
+      visual: "Maya brushing at night, the moon in her bathroom window. Phone on the sink shows the app's moon and toothbrush rocket: Ready for liftoff. Push in, then the logo.",
+      screen: "Same moon. Two minutes. Twice a day. → Fly to the moon. Bring your friends.", vo: "But no matter how far apart we are, we all look up at the same moon, and we all brush our teeth. Toothbrush Connect turns those two minutes into a trip to the moon, with your friends on board." },
+    { n: 5, act: 2, s: 30, e: 60, t: "Maya lifts off", who: ["maya"],
+      visual: "Screen capture: home-screen icon → Ready for liftoff → the rocket orbits, the new moon starts filling. Taps Stressful, dictates \"midterms week, send snacks 😭\", picks Close 3. Snackbar: Sending to Close 3 in 30s · Change · Undo. Friends' cards float in. Jump cut: Full moon. Done. You caught up with 3 friends.",
+      screen: "Maya · 21 · student · Boston", vo: "Maya opens Toothbrush Connect from her home screen. It's a website, so there's nothing to install. One tap, and her toothbrush rocket lifts off. One tap shares her mood, and she can dictate a line. No typing with a toothbrush in her hand. She chooses her crew for this flight, just her closest three, and has thirty seconds to change her mind. As the moon fills, her friends' news comes to her. Full moon: two minutes, and she's caught up." },
+    { n: 6, act: 2, s: 60, e: 80, t: "Priya in Tokyo", who: ["priya"],
+      visual: "Tokyo skyline in the morning, a pale daytime moon. Priya in her hotel room gets a real iMessage from the Photon line. She sends a ❤️ tapback (cut: the heart appears on Maya's screen in Boston), taps the link, lands signed in, taps Brush now. Her rocket lifts off.",
+      msg: "[💌 JUST FOR YOU · STRESSFUL] Maya: \"midterms week, send snacks 😭\" → tbc.link/r/a8K2",
+      screen: "Priya · 24 · consultant · Tokyo, 10:30 AM", vo: "Priya is thirteen time zones away and hasn't opened the app all day. She doesn't need to. Maya's update lands in iMessage, where she already is. A heart goes straight back to Boston, and one tap puts Priya on the flight too." },
+    { n: 7, act: 2, s: 80, e: 100, t: "Tom boards", who: ["tom"],
+      visual: "Bedtime. Tom brushes his daughter's teeth with one hand; she's in rocket pyjamas. Phone on the counter lights up. Free thumb: link → Ready for liftoff → Fun. Thumb large in frame.",
+      msg: "[🪥 BRUSHING NOW] Maya is brushing. Join → tbc.link/b/…",
+      screen: "Tom · 27 · nurse & dad · Chicago  ·  3 taps · 0 words typed", vo: "Tom's biggest adventure is two feet tall, and it leaves him one free hand. A 'brushing now' text, one tap to board, one tap for his mood. He's on the flight." },
+    { n: 8, act: 2, s: 100, e: 120, t: "Three skies, one moon", who: ["maya", "priya", "tom"],
+      visual: "Split screen: Boston 9:30 PM, Chicago 8:30 PM, Tokyo 10:30 AM next day. Moons fill in sync, each showing the other two avatars; waves and hearts cross the columns. Motion graphic: the three moons merge into one, with three rockets (aqua, yellow, pink) orbiting it. It fills to full.",
+      screen: "Three skies. One moon.", vo: "Boston, Chicago, Tokyo. Three different skies, one moon. For two minutes, the old crew is side by side again. We call it a Brush Buddy moment. Nobody had to plan a thing." },
+    { n: 9, act: 3, s: 120, e: 150, t: "Mission control", who: [],
+      visual: "Architecture drawn as a flight path, one node per phrase: Website → Supabase → 30 s hold → Outbox → Messaging agent → Photon → iMessage, then the dashed return path. Tech logos along the bottom.",
+      screen: "Mission control · React · TypeScript · Vite · Supabase · Postgres · Node.js · Photon Spectrum", vo: "Here's mission control. The website is a React and TypeScript app that installs like a native one. Supabase handles sign-in, live presence, and row-level security, so an update is only ever readable by the crew you picked. The thirty-second hold runs on a Postgres scheduler, then each update fans out to an outbox. Our Node messaging agent drains that outbox through Photon Spectrum into real iMessages, and handles replies, tapbacks and STOP on the way back." },
+    { n: 10, act: 4, s: 150, e: 175, t: "Impact & roadmap", who: [],
+      visual: "Motion slide on the night sky. Left: the stat. Right: three roadmap chips appear like stars: AWS, WhatsApp & SMS, Smart reminders. North star underneath.",
+      screen: "~24 hours a year spent brushing · North star: 4 connected days a week", vo: "Each of us already spends about twenty-four hours a year brushing our teeth. We want that time to keep our oldest friends close, however far we go. Next, we're moving to AWS so every new crew can launch, adding WhatsApp so friends on any phone can board, and smart reminders that arrive right before your usual liftoff." },
+    { n: 11, act: 5, s: 175, e: 180, t: "Close", who: ["maya"],
+      visual: "Maya's phone: Priya replies \"❤️ good luck on midterms!! 🚀\" over the rooftop wallpaper. Maya smiles. Cut to the full moon and the logo.",
+      screen: "Miles apart. Same moon. · site URL · team", vo: "Miles apart. Same moon. Bring them along." }
+  ];
+  var lanes = {
+    maya: [[0, 16], [20, 60], [100, 120], [175, 180]],
+    priya: [[6, 16], [60, 80], [100, 120]],
+    tom: [[6, 16], [80, 100], [100, 120]]
+  };
+  var laneText = { maya: "Maya", priya: "Priya", tom: "Tom" };
+
+  function fmt(sec) { sec = Math.floor(sec); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+  function pct(x) { return (x / TOTAL * 100) + "%"; }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function place(n, s, e) { n.style.left = "calc(" + pct(s) + " + 1px)"; n.style.width = "calc(" + pct(e - s) + " - 2px)"; }
+
+  var actsTrack = document.getElementById("acts-track");
+  acts.forEach(function (a) {
+    var n = el("div", "seg act-seg", a.e - a.s >= 20 ? a.name : "");
+    n.style.background = a.color; place(n, a.s, a.e); n.title = a.name;
+    actsTrack.appendChild(n);
+  });
+
+  var beatsTrack = document.getElementById("beats-track");
+  var segEls = [];
+  beats.forEach(function (b, i) {
+    var n = el("button", "seg beat-seg"); n.type = "button";
+    var wide = b.e - b.s >= 10;
+    n.appendChild(el("span", null, wide ? b.t : String(b.n)));
+    if (wide) n.appendChild(el("span", "tc", fmt(b.s)));
+    n.title = b.n + ". " + b.t + " (" + fmt(b.s) + "–" + fmt(b.e) + ")";
+    n.setAttribute("aria-label", "Beat " + b.n + ": " + b.t + ", " + fmt(b.s) + " to " + fmt(b.e));
+    place(n, b.s, b.e);
+    n.addEventListener("click", function () { seek(b.s); });
+    beatsTrack.appendChild(n); segEls.push(n);
+  });
+
+  Object.keys(lanes).forEach(function (k) {
+    var track = document.getElementById("lane-" + k);
+    lanes[k].forEach(function (r) {
+      var n = el("div", "seg", r[1] - r[0] >= 10 ? laneText[k] : "");
+      n.style.background = "var(--" + k + ")"; place(n, r[0], r[1]);
+      track.appendChild(n);
+    });
+  });
+
+  var axis = document.getElementById("axis");
+  for (var t = 0; t <= TOTAL; t += 30) { var s = el("span", null, fmt(t)); s.style.left = pct(t); axis.appendChild(s); }
+
+  // Beat cards, grouped by act
+  var actsBox = document.getElementById("acts");
+  var cardEls = [];
+  acts.forEach(function (a) {
+    var box = el("div", "act");
+    var head = el("div", "act-head");
+    head.appendChild(el("h3", null, a.short));
+    head.appendChild(el("span", "tc", fmt(a.s) + "–" + fmt(a.e) + " · " + (a.e - a.s) + " s"));
+    head.appendChild(el("p", "why", a.why));
+    box.appendChild(head);
+    var cards = el("div", "cards");
+    beats.filter(function (b) { return b.act === a.id; }).forEach(function (b) {
+      var c = el("article", "card"); c.tabIndex = 0;
+      var top = el("div", "card-top");
+      var ttl = el("h3", null, b.n + ". " + b.t);
+      top.appendChild(ttl);
+      var right = el("div", "dots");
+      b.who.forEach(function (w) { var d = el("span", "dot " + w); d.title = laneText[w]; right.appendChild(d); });
+      right.appendChild(el("span", "tc", " " + fmt(b.s) + "–" + fmt(b.e)));
+      top.appendChild(right);
+      c.appendChild(top);
+      c.appendChild(el("p", "small", b.visual));
+      if (b.msg) c.appendChild(el("div", "msg", b.msg));
+      if (b.screen) { var sc = el("p", "small"); var k = el("span", "tc", "ON-SCREEN  "); sc.appendChild(k); sc.appendChild(document.createTextNode(b.screen)); c.appendChild(sc); }
+      c.appendChild(el("p", "vo-q" + (b.vo ? "" : " none"), b.vo ? "“" + b.vo + "”" : "No voice-over. Let the moment breathe."));
+      c.addEventListener("click", function () { seek(b.s); document.getElementById("flow-h").scrollIntoView({ behavior: "smooth", block: "start" }); });
+      c.addEventListener("keydown", function (ev) { if (ev.key === "Enter") c.click(); });
+      cards.appendChild(c); cardEls.push(c);
+    });
+    box.appendChild(cards);
+    actsBox.appendChild(box);
+  });
+
+  // Now-playing panel + playhead
+  var now = document.getElementById("now");
+  var clock = document.getElementById("clock");
+  var playhead = document.getElementById("playhead");
+  var timeline = document.getElementById("timeline");
+  var cur = 0, playing = false, rate = 1, last = null, shown = -1;
+
+  function beatAt(t) { for (var i = 0; i < beats.length; i++) if (t >= beats[i].s && t < beats[i].e) return i; return beats.length - 1; }
+  function render(i) {
+    if (i === shown) return; shown = i;
+    var b = beats[i];
+    segEls.forEach(function (n, j) { n.classList.toggle("active", j === i); });
+    cardEls.forEach(function (n, j) { n.classList.toggle("active", j === i); });
+    now.textContent = "";
+    var left = el("div", "kv");
+    var tt = el("div", "now-title");
+    tt.appendChild(el("h3", null, "Beat " + b.n + " · " + b.t));
+    tt.appendChild(el("span", "tc", fmt(b.s) + "–" + fmt(b.e)));
+    left.appendChild(tt);
+    left.appendChild(el("p", "vo" + (b.vo ? "" : " none"), b.vo || "No voice-over. Let the moment breathe."));
+    var right = el("div", "kv");
+    var v = el("div"); v.appendChild(el("span", "k", "Visual")); v.appendChild(el("span", null, b.visual)); right.appendChild(v);
+    if (b.msg) { var m = el("div"); m.appendChild(el("span", "k", "iMessage")); m.appendChild(el("span", "msg", b.msg)); right.appendChild(m); }
+    if (b.screen) { var o = el("div"); o.appendChild(el("span", "k", "On-screen text")); o.appendChild(el("span", null, b.screen)); right.appendChild(o); }
+    var w = el("div"); w.appendChild(el("span", "k", "On camera"));
+    w.appendChild(el("span", null, b.who.length ? b.who.map(function (x) { return laneText[x]; }).join(", ") : "Graphics only")); right.appendChild(w);
+    now.appendChild(left); now.appendChild(right);
+  }
+  function draw() {
+    var track = beatsTrack.getBoundingClientRect(), box = timeline.getBoundingClientRect();
+    playhead.style.left = (track.left - box.left + track.width * cur / TOTAL - 1) + "px";
+    clock.textContent = fmt(cur);
+    render(beatAt(cur));
+  }
+  function seek(t) { cur = Math.max(0, Math.min(TOTAL, t)); draw(); }
+  function tick(ts) {
+    if (!playing) return;
+    if (last != null) cur += (ts - last) / 1000 * rate;
+    last = ts;
+    if (cur >= TOTAL) { cur = TOTAL; setPlaying(false); }
+    draw();
+    if (playing) requestAnimationFrame(tick);
+  }
+  var playBtn = document.getElementById("play");
+  function setPlaying(p) {
+    playing = p; last = null;
+    playBtn.textContent = p ? "❚❚ Pause" : "▶ Rehearse (" + rate + "×)";
+    if (p) { if (cur >= TOTAL) cur = 0; requestAnimationFrame(tick); }
+  }
+  playBtn.addEventListener("click", function () { setPlaying(!playing); });
+  var speedBtn = document.getElementById("speed");
+  speedBtn.addEventListener("click", function () {
+    rate = rate === 1 ? 6 : 1;
+    speedBtn.setAttribute("aria-pressed", String(rate === 6));
+    if (!playing) playBtn.textContent = "▶ Rehearse (" + rate + "×)";
+  });
+  document.getElementById("reset").addEventListener("click", function () { setPlaying(false); seek(0); });
+  window.addEventListener("resize", draw);
+  draw();
+})();
+</script>
