@@ -99,6 +99,6 @@ export interface PhoneVerifications {
 export interface LinkBuilder {
   // Where a check-in message links on the website (a magic link once FR-W7 exists).
   checkIn(checkInId: string, recipientId: string): string;
-  // A page on the website, e.g. "/timeline".
+  // A page on the website, e.g. "/start".
   page(path: string): string;
 }

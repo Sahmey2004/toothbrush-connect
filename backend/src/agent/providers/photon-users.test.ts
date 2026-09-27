@@ -118,6 +118,7 @@ describe("agent contact sync", () => {
     // Hwaejin was already on Photon; invited Ravi gets the invite instead.
     expect(sent.map((s) => s.address)).toEqual(["+13145550101"]);
     expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./);
+    expect(sent[0].text).toMatch(/→ http:\/\/localhost:5173\/start$/);
   });
 
   it("gives a number waiting to be verified its Photon line, without texting it", async () => {

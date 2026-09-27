@@ -35,6 +35,13 @@ describe("inbound handler", () => {
     await handle(text("Verify 123456"));
     expect(sent[0].address).toBe(ME);
     expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./);
+    expect(sent[0].text).toMatch(/→ http:\/\/localhost:5173\/start$/);
+  });
+
+  it("points someone with no invites waiting to the friends page", async () => {
+    const { handle, sent } = setup({ action: "nothing_pending" });
+    await handle(text("YES"));
+    expect(sent[0].text).toMatch(/→ http:\/\/localhost:5173\/friends$/);
   });
 
   it("says why a verification text didn't link the number", async () => {

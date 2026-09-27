@@ -36,7 +36,7 @@ export interface InboundDeps {
 export function createInboundHandler({ provider, inbox, links, now = Date.now }: InboundDeps) {
   // In memory: a restart can allow one extra auto-reply, which is fine.
   const lastAutoReply = new Map<string | null, number>();
-  const home = links.page("/timeline");
+  const home = links.page("/start");
 
   function replyFor(r: InboundResult): string | null {
     switch (r.action) {
@@ -47,7 +47,7 @@ export function createInboundHandler({ provider, inbox, links, now = Date.now }:
       case "joined":
         return renderJoined({ inviterNames: r.names }, home);
       case "nothing_pending":
-        return renderNothingPending(links.page("/circle"));
+        return renderNothingPending(links.page("/friends"));
       case "verified":
         return renderWelcome(home);
       case "code_unknown":

@@ -4,7 +4,7 @@
 //   AGENT_MODE=photon npx tsx --env-file=.env src/agent/main.ts    # send through Photon
 import { writeSync } from "node:fs";
 import { loadDatabaseConfig } from "./config.js";
-import { createAgent, createContactRegistry, createProvider } from "./index.js";
+import { createAgent, createContactRegistry, createProvider, createSiteLinks } from "./index.js";
 import {
   connectSupabase,
   createSupabaseContacts,
@@ -27,7 +27,7 @@ const agent = createAgent({
     registry: createContactRegistry(),
     verifications: createSupabaseVerifications(supabase),
   },
-  links: { checkIn: () => `${siteUrl}/timeline`, page: (path) => `${siteUrl}${path}` },
+  links: createSiteLinks(siteUrl),
   log,
 });
 

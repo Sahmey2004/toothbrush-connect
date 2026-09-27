@@ -47,7 +47,7 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
       }
       case "presence":
       case "presence_proactive":
-        return `${m.body} Join → ${links.page("/brush")}`;
+        return `${m.body} Join → ${links.page("/start")}`;
       case "reminder":
         return renderReminder(m.body, links.page("/start"));
       default:
@@ -71,7 +71,7 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
   // Starts the thread on the user's Photon line, so they never need to know which number to text.
   async function sendWelcome(phone: string) {
     try {
-      await provider.send(phone, renderWelcome(links.page("/timeline")));
+      await provider.send(phone, renderWelcome(links.page("/start")));
       log(`welcomed ${phone}`);
     } catch (e) {
       log(`welcome to ${phone} failed: ${errorText(e)}`);
@@ -169,6 +169,12 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
 }
 
 export type Agent = ReturnType<typeof createAgent>;
+
+// Links into the website's app (frontend/src/routes.tsx): /start to brush and post, /feed for friends' updates.
+// /timeline, /brush and /circle are the old pages.
+export function createSiteLinks(siteUrl: string): LinkBuilder {
+  return { checkIn: () => `${siteUrl}/feed`, page: (path) => `${siteUrl}${path}` };
+}
 
 // The provider AGENT_MODE asks for: Photon iMessage, or printing to the terminal.
 export async function createProvider(config: AgentConfig = loadAgentConfig()): Promise<MessagingProvider> {

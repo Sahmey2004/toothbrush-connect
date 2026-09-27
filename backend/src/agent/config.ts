@@ -45,7 +45,8 @@ export interface DatabaseConfig {
   siteUrl: string;
 }
 
-// For main.ts. Falls back to the frontend's variable names so one .env serves both.
+// For main.ts. Falls back to the frontend's variable names so one .env serves both. In photon mode messages go
+// to real phones, so their links must point at the public site, not the dev server.
 export function loadDatabaseConfig(env: Env = process.env): DatabaseConfig {
   const parsed = dbSchema.safeParse({
     SUPABASE_URL: env.SUPABASE_URL || env.VITE_SUPABASE_URL,
@@ -54,5 +55,11 @@ export function loadDatabaseConfig(env: Env = process.env): DatabaseConfig {
   });
   if (!parsed.success) fail(parsed.error);
   const c = parsed.data;
+  if (env.AGENT_MODE === "photon" && ["localhost", "127.0.0.1"].includes(new URL(c.SITE_URL).hostname)) {
+    throw new Error(
+      `Invalid agent config: SITE_URL is ${c.SITE_URL}, but photon mode texts real phones. Set SITE_URL to the ` +
+        "public site, e.g. https://toothbrush-connect.vercel.app",
+    );
+  }
   return { db: { url: c.SUPABASE_URL, secretKey: c.SUPABASE_SECRET_KEY }, siteUrl: c.SITE_URL.replace(/\/$/, "") };
 }

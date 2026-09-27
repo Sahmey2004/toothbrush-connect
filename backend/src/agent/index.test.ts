@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDatabaseConfig } from "./config.js";
 import { createFakeInbox, createFakeProvider, createFixedLinks, createMemoryOutbox } from "./fakes.js";
-import { createAgent, type DeliverableCheckIn } from "./index.js";
+import { createAgent, createSiteLinks, type DeliverableCheckIn } from "./index.js";
 import { RecipientNotReachable } from "./providers/types.js";
 
 const checkIn: DeliverableCheckIn = {
@@ -39,7 +39,7 @@ describe("agent.drain", () => {
 
     expect(sent.map((s) => s.address)).toEqual([SAM, RAVI]);
     expect(sent[0].text).toBe(
-      '[😣 STRESSFUL · today] Priya: "moving apartments, send help"\nReact or share yours → http://localhost:5173/timeline',
+      '[😣 STRESSFUL · today] Priya: "moving apartments, send help"\nReact or share yours → http://localhost:5173/feed',
     );
     expect(rows.map((r) => r.status)).toEqual(["sent", "sent"]);
     expect(rows[0].providerMessageId).toBe("fake-1");
@@ -57,7 +57,7 @@ describe("agent.drain", () => {
     const body = "[🪥 BRUSHING NOW] Sahmey is brushing right now.";
     enqueue({ userId: "u", channel: "imessage", address: SAM, kind: "presence_proactive", body, checkInId: null });
     await agent.drain();
-    expect(sent[0].text).toBe(`${body} Join → http://localhost:5173/brush`);
+    expect(sent[0].text).toBe(`${body} Join → http://localhost:5173/start`);
   });
 
   it("adds the Start link to brushing reminders", async () => {
@@ -114,6 +114,16 @@ describe("agent.drain", () => {
   });
 });
 
+describe("createSiteLinks", () => {
+  // The app's pages (routes.tsx): /start to brush and post, /feed for friends' updates. /timeline and /brush are
+  // the old pages.
+  it("links check-ins to the feed and pages to the site", () => {
+    const links = createSiteLinks("https://toothbrush-connect.vercel.app");
+    expect(links.checkIn("ci-1", "u")).toBe("https://toothbrush-connect.vercel.app/feed");
+    expect(links.page("/start")).toBe("https://toothbrush-connect.vercel.app/start");
+  });
+});
+
 describe("loadDatabaseConfig", () => {
   const base = { VITE_SUPABASE_URL: "https://x.supabase.co", SUPABASE_SECRET_KEY: "sb_secret_abc" };
 
@@ -126,6 +136,14 @@ describe("loadDatabaseConfig", () => {
 
   it("rejects the publishable key", () => {
     expect(() => loadDatabaseConfig({ ...base, SUPABASE_SECRET_KEY: "sb_publishable_abc" })).toThrow(/secret/);
+  });
+
+  it("refuses a localhost site in photon mode, where links go to real phones", () => {
+    expect(() => loadDatabaseConfig({ ...base, AGENT_MODE: "photon" })).toThrow(/SITE_URL/);
+    expect(() => loadDatabaseConfig({ ...base, AGENT_MODE: "photon", SITE_URL: "http://127.0.0.1:5173" })).toThrow(/SITE_URL/);
+    expect(loadDatabaseConfig({ ...base, AGENT_MODE: "photon", SITE_URL: "https://toothbrush-connect.vercel.app/" }).siteUrl).toBe(
+      "https://toothbrush-connect.vercel.app",
+    );
   });
 
   it("requires a key", () => {
