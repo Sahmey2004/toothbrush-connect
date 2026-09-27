@@ -83,8 +83,9 @@ reminder time set, which is trivial at current user numbers.
 
 ### Expiry — `claim_outbound()`
 
-`claim_outbound()` is redefined from its current body in `20260926000002_functions.sql`, with one extra first
-step:
+`claim_outbound()` is redefined from its current body in `20260926000002_functions.sql`, with one extra step
+after stuck sends are put back to pending (so a reminder the agent died holding expires too) and before the
+claim:
 
 ```sql
 update public.outbound_messages set status = 'skipped', error = 'expired'

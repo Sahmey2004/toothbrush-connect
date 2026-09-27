@@ -145,10 +145,17 @@ update public.outbound_messages set created_at = now() - interval '11 minutes'
 where id = (select id from pg_temp.reminders('priya') limit 1);
 update public.outbound_messages set created_at = now() - interval '1 minute'
 where id = (select id from pg_temp.reminders('priya') offset 1 limit 1);
+-- The agent died mid-send 30 minutes ago: the stuck reminder comes back from 'sending', and expires instead of going out late.
+update public.outbound_messages set status = 'sending', attempts = 1, created_at = now() - interval '30 minutes'
+where id = (select id from pg_temp.reminders('priya') offset 2 limit 1);
 create temp table claimed as select * from public.claim_outbound(1000);
 select pg_temp.check((select status = 'skipped' and error = 'expired' from pg_temp.reminders('priya') limit 1), 'an 11-minute-old reminder expires');
 select pg_temp.check(not exists (select 1 from claimed where id = (select id from pg_temp.reminders('priya') limit 1)), 'and is not sent');
 select pg_temp.check(exists (select 1 from claimed where id = (select id from pg_temp.reminders('priya') offset 1 limit 1)), 'a 1-minute-old reminder is sent');
+select pg_temp.check((select status = 'skipped' and error = 'expired' from pg_temp.reminders('priya') offset 2 limit 1),
+  'a reminder stuck mid-send for 30 minutes expires');
+select pg_temp.check(not exists (select 1 from claimed where id = (select id from pg_temp.reminders('priya') offset 2 limit 1)),
+  'and is not sent late');
 
 -- Phone removed after reminders were switched on: the times stay, nothing is queued or logged.
 select pg_temp.as_user('priya');

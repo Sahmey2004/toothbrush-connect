@@ -103,13 +103,11 @@ begin
 end $$;
 
 -- claim_outbound as in 20260926000002_functions.sql, plus: a reminder still unsent 10 minutes after it was queued
--- is dropped, so an agent outage never sends a stale "brush in 5 minutes".
+-- is dropped, so an agent outage never sends a stale "brush in 5 minutes". It runs after stuck sends are put back
+-- to pending, so a reminder the agent died holding expires too instead of going out late.
 create or replace function public.claim_outbound(p_limit int default 50) returns setof public.outbound_messages
 language plpgsql security definer set search_path = '' as $$
 begin
-  update public.outbound_messages set status = 'skipped', error = 'expired'
-  where status = 'pending' and kind = 'reminder' and created_at < now() - interval '10 minutes';
-
   update public.outbound_messages o set status = 'skipped', error = 'opted out'
   from public.channel_identities ci
   where o.status = 'pending' and ci.channel = o.channel and ci.address = o.address
@@ -117,6 +115,9 @@ begin
 
   update public.outbound_messages set status = 'pending'
   where status = 'sending' and sent_at is null and created_at < now() - interval '2 minutes' and attempts < 3;
+
+  update public.outbound_messages set status = 'skipped', error = 'expired'
+  where status = 'pending' and kind = 'reminder' and created_at < now() - interval '10 minutes';
 
   return query
   update public.outbound_messages set status = 'sending', attempts = attempts + 1
