@@ -79,20 +79,22 @@ npm run dev
 
 `AGENT_MODE` defaults to **terminal**: messages are printed instead of sent. Terminal mode only drains the
 outbox of a local database, so it never swallows real messages queued on the hosted project. In photon mode
-the agent also adds every phone in `channel_identities` to Photon's project Users. The welcome text is queued
-in the outbox too, once per person and number, when a number is verified without texting the line (phone
-sign-in, demo mode; migration 0010). `npx tsx --env-file=.env src/agent/dev.ts [welcome] +1…` sends one
-sample message without the database.
+the agent also adds every phone in `channel_identities` to Photon's project Users, and every number waiting to
+be verified (`phone_verifications`), recording the Photon line assigned to it.
+`npx tsx --env-file=.env src/agent/dev.ts [welcome] +1…` sends one sample message without the database.
 
 ### Connecting friends and phones
 
 - **Friends:** Circle → *Share your invite link*. The link survives Google sign-in and connects you as soon
   as the friend has set up. Adding someone by the email they signed in with also works.
-- **Phones:** Google accounts have no phone number, so nobody gets iMessages until they add one.
-  Circle or Settings → enter the number (`set_my_phone`, migration 0013). It's saved right away, without a
-  code (hackathon shortcut). Within a few seconds the agent adds it to Photon's Users and sends a welcome
-  text. If friends had invited that number earlier, the placeholder profile merges into the account
-  (friendships and received updates carry over).
+- **Phones:** Google accounts have no phone number, so nobody gets iMessages until they add one, by texting
+  in (migrations 0006 and 0015). Profile, Circle or Settings → enter the number (`start_phone_verification`).
+  Within a few seconds the agent adds it to Photon's Users and records the user's Photon line; the website
+  then shows *Text to verify*, which opens Messages addressed to that line with "Verify 123456" filled in.
+  When the text arrives, `agent_handle_inbound` links the number and the agent answers with a welcome.
+  Texting in is required: Photon's shared lines give every user their own number, and only message numbers
+  that texted it first ("Target not allowed for this project"). If friends had invited that number earlier,
+  the placeholder profile merges into the account (friendships and received updates carry over).
 - Migrations 0007-0011 were retired and their numbers are not reused, because some databases already
   applied them. `0006_phone_verification` stays because the hosted project has it applied.
 

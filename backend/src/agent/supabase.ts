@@ -3,7 +3,15 @@
 // are not granted to the public key.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Mood, Scope } from "../domain/moods.js";
-import type { ContactDirectory, DeliverableCheckIn, Inbox, InboundResult, Outbox, OutboxMessage } from "./ports.js";
+import type {
+  ContactDirectory,
+  DeliverableCheckIn,
+  Inbox,
+  InboundResult,
+  Outbox,
+  OutboxMessage,
+  PhoneVerifications,
+} from "./ports.js";
 import type { Channel } from "./providers/types.js";
 import type { AudienceLabel } from "./templates/labels.js";
 
@@ -90,8 +98,8 @@ export function createSupabaseInbox(db: SupabaseClient): Inbox {
         p_reaction: msg.reaction,
       });
       if (error) throw new Error(`agent_handle_inbound: ${error.message}`);
-      const r = data as { action: InboundResult["action"]; user_id: string; names?: string[] | null };
-      return { action: r.action, userId: r.user_id, names: r.names ?? [] };
+      const r = data as { action: InboundResult["action"]; user_id?: string; names?: string[] | null };
+      return { action: r.action, userId: r.user_id ?? null, names: r.names ?? [] };
     },
   };
 }
@@ -112,6 +120,41 @@ export function createSupabaseContacts(db: SupabaseClient): ContactDirectory {
         name: byId.get(r.user_id as string) ?? null,
         verified: r.verified_at !== null,
       }));
+    },
+  };
+}
+
+// phone_verifications (migration 0006), read and written with the service role.
+export function createSupabaseVerifications(db: SupabaseClient): PhoneVerifications {
+  return {
+    async listUnlinked() {
+      const rows = await db
+        .from("phone_verifications")
+        .select("user_id, phone")
+        .is("verified_at", null)
+        .is("photon_user_id", null)
+        .gt("expires_at", new Date().toISOString());
+      if (rows.error) throw new Error(`phone_verifications: ${rows.error.message}`);
+      if (!rows.data.length) return [];
+      const names = await db.from("profiles").select("id, display_name").in("id", rows.data.map((r) => r.user_id as string));
+      if (names.error) throw new Error(`profiles: ${names.error.message}`);
+      const byId = new Map(names.data.map((p) => [p.id as string, (p.display_name as string | null) ?? null]));
+      return rows.data.map((r) => ({
+        userId: r.user_id as string,
+        phone: r.phone as string,
+        name: byId.get(r.user_id as string) ?? null,
+      }));
+    },
+
+    async link(userId, phone, user) {
+      // Only if it's still that number: the user may have entered another one since.
+      const { error } = await db
+        .from("phone_verifications")
+        .update({ photon_user_id: user.id, line_number: user.line })
+        .eq("user_id", userId)
+        .eq("phone", phone)
+        .is("verified_at", null);
+      if (error) throw new Error(`phone_verifications: ${error.message}`);
     },
   };
 }

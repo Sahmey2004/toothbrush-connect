@@ -33,8 +33,11 @@ export const api = {
     const { error } = await supabase.from("profiles").update({ display_name: name.trim() }).eq("id", userId);
     if (error) throw new Error(error.message);
   },
-  // Save the number friends' updates are texted to. An empty string removes it.
-  setMyPhone: (phone: string) => rpc<Me>("set_my_phone", { p_phone: phone }),
+  // Add the number friends' updates are texted to: returns the code to text from it (see photonVerifyLink).
+  startPhoneVerification: (phone: string) =>
+    rpc<{ phone: string; code: string; expires_at: string }>("start_phone_verification", { p_phone: phone }),
+  // Remove your number.
+  removeMyPhone: () => rpc<Me>("set_my_phone", { p_phone: "" }),
   exportData: () => rpc<unknown>("export_my_data"),
   deleteAccount: () => rpc<void>("delete_my_account"),
 
@@ -140,3 +143,9 @@ export const api = {
     }
   },
 };
+
+// Photon's per-user redirect: opens Messages addressed to the user's own Photon line with "Verify 123456" filled in.
+// Texting it proves the number, and lets Photon message it from then on (shared lines only message numbers that
+// texted first).
+export const photonVerifyLink = (photonUserId: string, code: string) =>
+  `https://spectrum.photon.codes/users/${photonUserId}/redirect?msg=${encodeURIComponent(`Verify ${code}`)}`;

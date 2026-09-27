@@ -1,5 +1,5 @@
 // The phone entered during sign-up survives the trip through Google sign-in: SignupInvite saves it
-// here before the OAuth redirect, and BrushLayout applies it with set_my_phone once you're signed in.
+// here before the OAuth redirect, and BrushLayout starts verifying it once you're signed in.
 const KEY = "tc.pendingPhone";
 
 export const savePendingPhone = (phone: string) => localStorage.setItem(KEY, phone);

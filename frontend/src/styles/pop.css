@@ -671,6 +671,20 @@ body.pop-body { background: var(--space, #0f0f12); }
   gap: 12px;
 }
 
+/* asks someone who entered a number to text in the code; links to Profile */
+.pop-verify {
+  display: block;
+  max-width: 560px;
+  margin: 0 auto 10px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--aqua);
+  color: var(--teal-ink);
+  font-weight: 800;
+  font-size: 14px;
+  text-decoration: none;
+}
+
 /* the brushing countdown, pinned under the app bar after you send; vanishes at 0:00 */
 .pop-brushbar {
   max-width: 560px;
@@ -822,6 +836,7 @@ body.pop-body { background: var(--space, #0f0f12); }
   cursor: pointer;
   transition: filter 120ms ease, background-color 120ms ease;
 }
+a.pop-set__btn { display: inline-flex; align-items: center; text-decoration: none; }
 .pop-set__btn--primary { background: var(--aqua); color: var(--teal-ink); }
 .pop-set__btn--primary:hover { filter: brightness(1.05); }
 .pop-set__btn--ghost { background: #eef1f4; color: #33333d; }

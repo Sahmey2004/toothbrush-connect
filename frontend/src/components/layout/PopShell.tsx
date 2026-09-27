@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { MiniTimer } from "../timer/MiniTimer";
 import "../../styles/pop.css";
@@ -45,6 +45,9 @@ const meClass = ({ isActive }: { isActive: boolean }) => "pop-appbar__me" + (isA
 
 export function PopShell() {
   const { me } = useAuth();
+  const { pathname } = useLocation();
+  // Profile has the "Text to verify" button, and keeps checking for the text.
+  const verifyNudge = !!me?.phone_verification && pathname !== "/profile";
   const initial = (me?.display_name?.trim()?.[0] ?? "🙂").toUpperCase();
 
   // Keep the whole document dark (incl. overscroll) while the signed-in app is mounted.
@@ -71,6 +74,11 @@ export function PopShell() {
           </NavLink>
         </header>
         <MiniTimer />
+        {verifyNudge && (
+          <NavLink to="/profile" className="pop-verify">
+            One more step: text us a code to turn on iMessage updates →
+          </NavLink>
+        )}
       </div>
       <main className="pop-app__main">
         <Outlet />

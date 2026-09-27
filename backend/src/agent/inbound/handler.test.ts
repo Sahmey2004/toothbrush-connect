@@ -30,6 +30,20 @@ describe("inbound handler", () => {
     expect(sent[0].text).toMatch(/^\[👋 INVITE\] You're in Sahmey's circle\./);
   });
 
+  it("welcomes someone whose verification text linked their number", async () => {
+    const { handle, sent } = setup({ action: "verified" });
+    await handle(text("Verify 123456"));
+    expect(sent[0].address).toBe(ME);
+    expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./);
+  });
+
+  it("says why a verification text didn't link the number", async () => {
+    const { handle, sent } = setup({ action: "code_unknown", userId: null });
+    await handle(text("Verify 000000"));
+    expect(sent[0].text).toMatch(/^\[🔑 CODE\] That code didn't match\./);
+    expect(sent[0].text).toMatch(/→ http:\/\/localhost:5173\/profile$/);
+  });
+
   it("maps a tapback to the reaction name and the id of our message", async () => {
     const { handle, sent, handled } = setup({ action: "reacted" });
     await handle({ type: "reaction", channel: "imessage", from: ME, messageId: "r", emoji: "😂", targetMessageId: "spc-msg-1" });

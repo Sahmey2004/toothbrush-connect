@@ -5,6 +5,7 @@ import {
   renderBatch,
   renderBrushingNow,
   renderCode,
+  renderCodeProblem,
   renderDigest,
   renderEdited,
   renderInvite,
@@ -62,6 +63,9 @@ const samples: [string, string][] = [
   ["joined", renderJoined({ inviterNames: ["Sahmey"] }, LINK)],
   ["joined, no names", renderJoined({ inviterNames: [] }, LINK)],
   ["welcome", renderWelcome(LINK)],
+  ...(["code_unknown", "code_expired", "phone_mismatch", "phone_taken"] as const).map(
+    (problem): [string, string] => [`verification ${problem}`, renderCodeProblem(problem, LINK)],
+  ),
 ];
 
 describe("FR-D3 lint: every template starts with a catalog label and ends with a link", () => {
@@ -130,6 +134,15 @@ describe("messages", () => {
   it("reject links that are not http(s) URLs", () => {
     expect(() => renderPostOnWeb("tbc.link/r/x")).toThrow();
     expect(() => renderPostOnWeb("javascript:alert(1)")).toThrow();
+  });
+
+  it("explain why a verification text didn't link the number", () => {
+    expect(renderCodeProblem("code_unknown", LINK)).toBe(
+      `[🔑 CODE] That code didn't match. Get a new one on the website.\nVerify your number → ${LINK}`,
+    );
+    expect(renderCodeProblem("code_expired", LINK)).toMatch(/^\[🔑 CODE\] That code expired\./);
+    expect(renderCodeProblem("phone_mismatch", LINK)).toMatch(/Text it from the number you entered on the website\./);
+    expect(renderCodeProblem("phone_taken", LINK)).toMatch(/already on another account/);
   });
 
   it("reject malformed sign-in codes", () => {

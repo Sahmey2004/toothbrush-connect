@@ -18,12 +18,22 @@ export interface Settings {
   onboarded_at: string | null;
 }
 
+// A number entered on the website, waiting for its "Verify 123456" text (migration 0006).
+export interface PhoneVerification {
+  phone: string;
+  code: string;
+  photon_user_id: string | null; // set by the agent within a few seconds; the "Text to verify" link needs it
+  line_number: string | null;    // the Photon line this user texts
+  expires_at: string;
+}
+
 export interface Me {
   id: string;
   display_name: string;
   status: "guest" | "active";
   email: string | null;
-  phone: string | null;
+  phone: string | null;                        // verified number that gets iMessages
+  phone_verification: PhoneVerification | null; // entered but not texted in yet
   settings: Settings;
 }
 

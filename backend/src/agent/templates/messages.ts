@@ -146,6 +146,24 @@ export function renderWelcome(link: string): string {
   return compose(label({ kind: "post_on_web" }), body, "Post yours on the website", link);
 }
 
+// Why a "Verify 123456" text didn't link the number (complete_phone_verification, migration 0006).
+export type VerifyProblem =
+  | "code_unknown"
+  | "code_expired"
+  | "phone_mismatch" // code texted from a different number than the one entered
+  | "phone_taken"; // number already verified on another account
+
+const VERIFY_PROBLEMS: Record<VerifyProblem, string> = {
+  code_unknown: "That code didn't match. Get a new one on the website.",
+  code_expired: "That code expired. Get a new one on the website.",
+  phone_mismatch: "That code is for a different phone. Text it from the number you entered on the website.",
+  phone_taken: "This number is already on another account.",
+};
+
+export function renderCodeProblem(problem: VerifyProblem, link: string): string {
+  return compose(label({ kind: "code" }), VERIFY_PROBLEMS[problem], "Verify your number", link);
+}
+
 // [👋 INVITE] You're in Sahmey's circle. Their updates will arrive here.
 export function renderJoined(p: { inviterNames: string[] }, link: string): string {
   const names = p.inviterNames.map(name);

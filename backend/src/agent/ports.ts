@@ -3,6 +3,7 @@
 import type { Mood, Scope } from "../domain/moods.js";
 import type { Channel } from "./providers/types.js";
 import type { AudienceLabel } from "./templates/labels.js";
+import type { VerifyProblem } from "./templates/messages.js";
 
 // A row of `outbound_messages`: the database queues every message the agent sends (README "Messaging agent").
 export interface OutboxMessage {
@@ -47,11 +48,14 @@ export type InboundAction =
   | "replied" // "> text" reply, recorded (the author's notice is queued)
   | "no_update_to_reply"
   | "ignored" // opted out, or a tapback on something that isn't a check-in
-  | "help"; // anything else
+  | "help" // anything else
+  // "Verify 123456" from the website's phone check (migration 0006)
+  | "verified" // number linked to the account
+  | VerifyProblem; // code_unknown, code_expired, phone_mismatch, phone_taken
 
 export interface InboundResult {
   action: InboundAction;
-  userId: string;
+  userId: string | null; // null for "code_unknown": the code matched nobody
   names: string[]; // inviters, for "joined"
 }
 
@@ -71,9 +75,25 @@ export interface ContactDirectory {
   listPhones(): Promise<{ phone: string; name: string | null; verified: boolean }[]>;
 }
 
-// The provider's list of allowed numbers (Photon project Users). True if the phone was newly added.
+// A phone on Photon's Users list. On shared lines every user gets a line of their own, so `line` is the number
+// they must text.
+export interface PhotonUser {
+  id: string;
+  line: string | null;
+}
+
+// The provider's list of allowed numbers (Photon project Users).
 export interface ContactRegistry {
-  ensure(phone: string, name?: string | null): Promise<boolean>;
+  // Adds the phone if it's missing (`added`). Null for numbers that are never registered (test data).
+  ensure(phone: string, name?: string | null): Promise<(PhotonUser & { added: boolean }) | null>;
+}
+
+// Numbers entered on the website and waiting for their "Verify 123456" text (`phone_verifications`, migration
+// 0006). The website opens Messages addressed to the user's Photon line, which the agent records here.
+export interface PhoneVerifications {
+  // Open verifications that don't know their Photon user yet.
+  listUnlinked(): Promise<{ userId: string; phone: string; name: string | null }[]>;
+  link(userId: string, phone: string, user: PhotonUser): Promise<void>;
 }
 
 export interface LinkBuilder {

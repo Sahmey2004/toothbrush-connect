@@ -228,7 +228,7 @@ export function SignupInvite() {
 
   // Sign-in is Google through Supabase — the app's single login. Return to "/" afterwards.
   // If a phone was entered earlier, stash it so it survives the OAuth redirect; BrushLayout
-  // saves it with set_my_phone once signed in. It's optional — no phone, nothing stashed.
+  // starts verifying it once signed in. It's optional — no phone, nothing stashed.
   const finish = async () => {
     const phone = (prev.phone || "").trim();
     if (phone) savePendingPhone(phone);

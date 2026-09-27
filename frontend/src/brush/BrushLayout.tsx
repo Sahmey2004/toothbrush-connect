@@ -14,16 +14,16 @@ export function BrushLayout() {
   const brush = useSession(me?.id);
   useWakeLock(!!brush.session);
 
-  // A phone entered during sign-up (before auth) is saved here once signed in. Optional:
-  // nothing stashed → nothing happens; an existing number is left alone. If saving fails, Profile
-  // shows the number and the reason so it can be fixed.
+  // A phone entered during sign-up (before auth) starts its text-to-verify here once signed in; the
+  // app bar then asks them to text us the code. Optional: nothing stashed → nothing happens; an
+  // existing number is left alone. If it can't start, Profile shows the number and the reason.
   useEffect(() => {
     if (!me) return;
     const phone = peekPendingPhone();
     if (!phone) return;
     clearPendingPhone();
     if (me.phone) return;
-    api.setMyPhone(phone)
+    api.startPhoneVerification(phone)
       .then(() => refreshMe())
       .catch((e) => savePhoneProblem(phone, e instanceof Error ? e.message : String(e)));
   }, [me, refreshMe]);

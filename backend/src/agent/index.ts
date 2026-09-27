@@ -4,7 +4,16 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { loadAgentConfig, type AgentConfig } from "./config.js";
 import { createInboundHandler } from "./inbound/handler.js";
-import type { ContactDirectory, ContactRegistry, Inbox, LinkBuilder, Outbox, OutboxMessage, SendReport } from "./ports.js";
+import type {
+  ContactDirectory,
+  ContactRegistry,
+  Inbox,
+  LinkBuilder,
+  Outbox,
+  OutboxMessage,
+  PhoneVerifications,
+  SendReport,
+} from "./ports.js";
 import { connectIMessage, createIMessageProvider } from "./providers/imessage.js";
 import { createPhotonUsers, noContactRegistry } from "./providers/photon-users.js";
 import { createTerminalProvider } from "./providers/terminal.js";
@@ -18,8 +27,9 @@ export interface AgentDeps {
   outbox: Outbox;
   inbox: Inbox;
   links: LinkBuilder;
-  // Photon only talks to numbers on the project's Users list; every known phone is added to it.
-  contacts?: { directory: ContactDirectory; registry: ContactRegistry };
+  // Photon only talks to numbers on the project's Users list; every known phone is added to it, and so is every
+  // number waiting to be verified.
+  contacts?: { directory: ContactDirectory; registry: ContactRegistry; verifications?: PhoneVerifications };
   log?: (line: string) => void;
 }
 
@@ -43,16 +53,16 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
     }
   }
 
-  // True if the phone was newly added to Photon's Users.
-  async function register(phone: string, name?: string | null): Promise<boolean> {
-    if (!contacts) return false;
+  // The phone's Photon user; `added` if it was new. Null if it isn't registered (terminal mode, test data, errors).
+  async function register(phone: string, name?: string | null) {
+    if (!contacts) return null;
     try {
-      const added = await contacts.registry.ensure(phone, name);
-      if (added) log(`registered ${phone} with Photon`);
-      return added;
+      const user = await contacts.registry.ensure(phone, name);
+      if (user?.added) log(`registered ${phone} with Photon`);
+      return user;
     } catch (e) {
       log(`registering ${phone} with Photon failed: ${errorText(e)}`);
-      return false;
+      return null;
     }
   }
 
@@ -68,10 +78,21 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
 
   // Add every phone in the database to Photon's Users, e.g. right after someone signs up or is invited, and
   // welcome people who signed up with their own phone. Invited friends get their invite instead.
+  // Numbers entered on the website are added too, and their Photon line recorded: the website then opens
+  // Messages addressed to it with "Verify 123456" filled in. Nothing is texted to them, since Photon's shared
+  // lines can't message a number before it texts in; the reply to that text is their welcome.
   async function syncContacts() {
     if (!contacts) return;
     for (const c of await contacts.directory.listPhones()) {
-      if ((await register(c.phone, c.name)) && c.verified) await sendWelcome(c.phone);
+      if ((await register(c.phone, c.name))?.added && c.verified) await sendWelcome(c.phone);
+    }
+    const { verifications } = contacts;
+    if (!verifications) return;
+    for (const v of await verifications.listUnlinked()) {
+      const user = await register(v.phone, v.name);
+      if (!user) continue;
+      await verifications.link(v.userId, v.phone, { id: user.id, line: user.line });
+      log(`${v.phone} can verify by texting ${user.line ?? "their Photon line"}`);
     }
   }
 
