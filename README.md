@@ -65,10 +65,17 @@ supabase config push        # apply auth settings from config.toml; review the d
 
 ### Messaging agent
 
-The database queues every outgoing message (check-in deliveries, invites, brushing-now, reactions) in
+The database queues every outgoing message (check-in deliveries, invites, brushing-now, reactions,
+brushing reminders) in
 `outbound_messages`. The agent (`backend/src/agent/`, a long-running Node process) claims them with
 `claim_outbound`, sends them through Photon, and records the result; inbound texts and tapbacks go to
 `agent_handle_inbound`. Photon notes and the build plan: `docs/PLAN.md`.
+
+**Brushing reminders.** People set a morning and a night brush time on Profile (`user_settings.morning_reminder` /
+`night_reminder`, in their `timezone`). Every 5 s, `run_due_jobs` calls `enqueue_brush_reminders()`, which queues a
+`reminder` 5 minutes before each time (once per slot per local day, logged in `brush_reminders`) to the person's
+verified iMessage number, ignoring quiet hours. It skips people who are brushing or brushed in the last 30 minutes.
+The agent adds `Start brushing → <SITE_URL>/start`. `claim_outbound` drops reminders still unsent after 10 minutes.
 
 ```sh
 cd backend && npm install
