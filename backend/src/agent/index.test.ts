@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadDatabaseConfig } from "./config.js";
 import { createFakeInbox, createFakeProvider, createFixedLinks, createMemoryOutbox } from "./fakes.js";
 import { createAgent, type DeliverableCheckIn } from "./index.js";
@@ -27,8 +27,10 @@ function setup(fail?: (address: string) => Error | null) {
     links: createFixedLinks(),
     log: () => {},
   });
-  return { agent, sent, ...box };
+  return { agent, provider, sent, ...box };
 }
+
+afterEach(() => vi.useRealTimers());
 
 describe("agent.drain", () => {
   it("sends check-ins rendered with our templates, with a link to the website", async () => {
@@ -50,6 +52,21 @@ describe("agent.drain", () => {
     enqueue({ userId: "u", channel: "imessage", address: SAM, kind: "reaction", body: "[❤️ REACTION] Sam", checkInId: null });
     await agent.drain();
     expect(sent[0].text).toBe("[❤️ REACTION] Sam");
+  });
+
+  it("writes the welcome the database queued with our template, linking to the website", async () => {
+    const { agent, sent, enqueue, rows } = setup();
+    enqueue({ userId: "u", channel: "imessage", address: SAM, kind: "welcome", body: "[old SQL text]", checkInId: null });
+    await agent.drain();
+    expect(sent).toEqual([
+      {
+        address: SAM,
+        text:
+          "[ℹ️ POST ON THE WEB] You're set up for Toothbrush Connect. Friends' updates will arrive here. Text STOP to opt out." +
+          "\nPost yours on the website → http://localhost:5173/timeline",
+      },
+    ]);
+    expect(rows[0].status).toBe("sent");
   });
 
   it("adds the Join link to brushing-now messages", async () => {
@@ -111,6 +128,125 @@ describe("agent.drain", () => {
     await agent.drain();
     expect(sent).toHaveLength(0);
     expect(rows[0].error).toBe("no whatsapp provider");
+  });
+
+  it("claims at most 10 messages at a time", async () => {
+    const { agent, sent, enqueue } = setup();
+    for (let i = 0; i < 12; i++) enqueue(checkInMsg(SAM));
+    await agent.drain();
+    expect(sent).toHaveLength(10);
+  });
+
+  it("counts a send that hangs as failed after 30 s, and sends the rest of the batch", async () => {
+    vi.useFakeTimers();
+    const { agent, provider, sent, enqueue, rows } = setup();
+    const send = provider.send;
+    provider.send = (address, ...rest) => (address === SAM ? new Promise(() => {}) : send(address, ...rest));
+    enqueue(checkInMsg(SAM));
+    enqueue(checkInMsg(RAVI));
+
+    const draining = agent.drain();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await draining;
+    expect(rows.map((r) => r.status)).toEqual(["pending", "sent"]);
+    expect(rows[0].error).toMatch(/30 s/);
+    expect(sent.map((s) => s.address)).toEqual([RAVI]);
+  });
+
+  it("records a send that gets through after timing out, so the retry doesn't text them again", async () => {
+    vi.useFakeTimers();
+    const { agent, provider, sent, enqueue, rows } = setup();
+    const send = provider.send;
+    let deliver!: () => void;
+    provider.send = (...args) => new Promise((resolve) => (deliver = () => resolve(send(...args))));
+    enqueue(checkInMsg(SAM));
+
+    const draining = agent.drain();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await draining;
+    expect(rows[0].status).toBe("pending");
+
+    deliver();
+    await vi.runAllTimersAsync();
+    expect(rows[0]).toMatchObject({ status: "sent", providerMessageId: "fake-1", error: undefined });
+    await agent.drain();
+    expect(sent).toHaveLength(1);
+  });
+
+  it("doesn't start a send it already gave up on", async () => {
+    vi.useFakeTimers();
+    const { agent, sent, enqueue, outbox } = setup();
+    const getCheckIn = outbox.getCheckIn;
+    let answer!: () => void;
+    outbox.getCheckIn = (...args) => new Promise((resolve) => (answer = () => resolve(getCheckIn(...args))));
+    enqueue(checkInMsg(SAM));
+
+    const draining = agent.drain();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await draining;
+    answer(); // the check-in lookup finally comes back
+    await vi.runAllTimersAsync();
+    expect(sent).toHaveLength(0);
+  });
+
+  it("retries recording a result after a network blip", async () => {
+    vi.useFakeTimers();
+    const { agent, sent, enqueue, outbox, rows } = setup();
+    const complete = outbox.complete;
+    let blips = 2;
+    outbox.complete = async (...args) => {
+      if (blips-- > 0) throw new Error("fetch failed");
+      return complete(...args);
+    };
+    enqueue(checkInMsg(SAM));
+
+    const draining = agent.drain();
+    await vi.runAllTimersAsync();
+    await draining;
+    expect(rows[0].status).toBe("sent");
+    expect(sent).toHaveLength(1);
+  });
+
+  it("keeps sending the batch when a result can't be recorded", async () => {
+    vi.useFakeTimers();
+    const logs: string[] = [];
+    const { provider } = createFakeProvider();
+    const box = createMemoryOutbox({ "ci-1": checkIn });
+    const agent = createAgent({
+      provider,
+      outbox: box.outbox,
+      inbox: createFakeInbox().inbox,
+      links: createFixedLinks(),
+      log: (l) => logs.push(l),
+    });
+    const complete = box.outbox.complete;
+    box.outbox.complete = async (id, report) => {
+      if (id === 1) throw new Error("fetch failed");
+      return complete(id, report);
+    };
+    box.enqueue(checkInMsg(SAM));
+    box.enqueue(checkInMsg(RAVI));
+
+    const draining = agent.drain();
+    await vi.runAllTimersAsync();
+    expect((await draining).map((r) => r.report.ok)).toEqual([true, true]);
+    expect(box.rows.map((r) => r.status)).toEqual(["sending", "sent"]);
+    expect(logs).toContainEqual(expect.stringMatching(/^recording #1 failed: fetch failed/));
+  });
+});
+
+describe("memory outbox", () => {
+  it("records a success once, and a failure only while the message is out for sending (migration 0008)", async () => {
+    const { outbox, enqueue, rows } = createMemoryOutbox();
+    enqueue(checkInMsg(SAM));
+    await outbox.claim(10);
+    await outbox.complete(1, { ok: false, error: "503" });
+    await outbox.complete(1, { ok: false, error: "late report" }); // released already: ignored
+    expect(rows[0]).toMatchObject({ status: "pending", error: "503" });
+
+    await outbox.complete(1, { ok: true, providerMessageId: "p1" }); // a late success still counts
+    await outbox.complete(1, { ok: true, providerMessageId: "p2" });
+    expect(rows[0]).toMatchObject({ status: "sent", providerMessageId: "p1", error: undefined });
   });
 });
 

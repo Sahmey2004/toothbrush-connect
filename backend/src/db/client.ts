@@ -185,12 +185,13 @@ export function createDb(configOrClient: DbConfig | Pick<SupabaseClient, "rpc">)
         } catch (err) {
           failed++;
           const reason = err instanceof Error ? err.message : String(err);
-          // If recording fails too, claim_outbound resets stuck 'sending' rows after 2 minutes.
+          // If recording fails too, claim_outbound releases the claim once its 10-minute lease lapses (migration 0008).
           await db.markFailed(msg.id, reason).catch(() => {});
           continue;
         }
-        // Sent: record it, retrying briefly. A row left in 'sending' is re-queued after 2 minutes,
-        // which would send a duplicate, so this is worth a few tries. Never retry the send itself.
+        // Sent: record it, retrying briefly. A row left in 'sending' is re-queued when its 10-minute claim
+        // lapses (migration 0008), which would send a duplicate, so this is worth a few tries. Never retry the
+        // send itself.
         await retry(() => db.markSent(msg.id, providerMessageId), 3, 500);
         sent++;
       }

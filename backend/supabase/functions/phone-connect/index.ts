@@ -70,9 +70,13 @@ Deno.serve(async (req) => {
     const { data: me } = await asUser.rpc("get_me");
     const user = await photonUser(started.phone, String(me?.display_name ?? "").split(" ")[0]);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    // Only the row this request created: if the user has since submitted another number, the row now
+    // holds that one, and this number's Photon user must not be written onto it.
     await admin.from("phone_verifications")
       .update({ photon_user_id: user.id, line_number: user.assignedPhoneNumber ?? null })
-      .eq("user_id", started.user_id);
+      .eq("user_id", started.user_id)
+      .eq("phone", started.phone)
+      .eq("code", started.code);
     return json({
       ...started,
       photon_user_id: user.id,

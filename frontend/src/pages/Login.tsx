@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { signInWithGoogle } from "../lib/auth";
 import { useAuth } from "../auth/AuthProvider";
 import { ErrorNote } from "../components/common/ErrorNote";
 import { PhoneSignIn } from "../components/auth/PhoneSignIn";
@@ -26,18 +26,14 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
 
   if (session && me) {
-    if (me.settings.onboarded_at) return <Navigate to={next ?? "/brush"} replace />;
+    if (me.settings.onboarded_at) return <Navigate to={next ?? "/start"} replace />;
     return <Navigate to={next ? `/onboarding?next=${encodeURIComponent(next)}` : "/onboarding"} replace />;
   }
 
   const google = async () => {
     setBusy(true); setError(null);
-    const redirectTo = `${location.origin}/login${next ? `?next=${encodeURIComponent(next)}` : ""}`;
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
-    if (error) {
-      setError(error.message.includes("provider is not enabled") ? "Google sign-in isn't set up for this project yet." : error.message);
-      setBusy(false);
-    }
+    const err = await signInWithGoogle(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+    if (err) { setError(err); setBusy(false); }
   };
 
   return (

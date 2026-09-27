@@ -4,6 +4,8 @@
 -- friend's real (Google) account, because the two profiles were never linked.
 begin;
 \set QUIET on
+-- This file tests verifying by text, so the demo auto-verify trigger (migration 0007) is off here.
+alter table public.phone_verifications disable trigger demo_auto_verify_phone;
 create temp table ids (name text primary key, auth uuid, profile uuid);
 grant all on ids to authenticated;
 

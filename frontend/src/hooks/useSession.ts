@@ -13,9 +13,11 @@ export function useSession(userId: string | undefined) {
   const [starting, setStarting] = useState(false);
   const remaining = useCountdown(session?.ends_at ?? null);
   const firedRef = useRef<Set<number>>(new Set());
+  const actedRef = useRef(false); // start/end called: the on-load lookup below is stale
 
   useEffect(() => {
-    if (userId) api.activeSession(userId).then(setSession).catch(() => {});
+    // A slow answer to this lookup must not wipe a session the person started meanwhile.
+    if (userId) api.activeSession(userId).then((s) => { if (!actedRef.current) setSession(s); }).catch(() => {});
   }, [userId]);
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export function useSession(userId: string | undefined) {
   }, [remaining, session]);
 
   const start = useCallback(async () => {
+    actedRef.current = true;
     setStarting(true);
     try {
       const s = await api.startSession();
@@ -50,6 +53,7 @@ export function useSession(userId: string | undefined) {
 
   const end = useCallback(async () => {
     if (!session) return;
+    actedRef.current = true;
     const ended = await api.endSession(session.id);
     setFinished(ended ?? session);
     setSession(null);

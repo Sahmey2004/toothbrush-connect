@@ -79,9 +79,10 @@ npm run dev
 
 `AGENT_MODE` defaults to **terminal**: messages are printed instead of sent. Terminal mode only drains the
 outbox of a local database, so it never swallows real messages queued on the hosted project. In photon mode
-the agent also adds every phone in `channel_identities` to Photon's project Users and welcomes people who
-signed up with their phone. `npx tsx --env-file=.env src/agent/dev.ts [welcome] +1…` sends one sample message
-without the database.
+the agent also adds every phone in `channel_identities` to Photon's project Users. The welcome text is queued
+in the outbox too, once per person and number, when a number is verified without texting the line (phone
+sign-in, demo mode; migration 0010). `npx tsx --env-file=.env src/agent/dev.ts [welcome] +1…` sends one
+sample message without the database.
 
 ### Connecting friends and phones
 
@@ -92,6 +93,8 @@ without the database.
   with "Verify 123456" filled in; when the agent receives it, the number is linked. Texting first is also
   what lets Photon's shared line message that number. If friends had invited that number earlier, the
   placeholder profile merges into the account (friendships and received updates carry over).
+- **Demo mode (migration 0007):** a number counts as verified as soon as it's entered; no text needed.
+  To restore texting to verify: `drop trigger demo_auto_verify_phone on public.phone_verifications;`
 - The `phone-connect` edge function registers the number with Photon; it needs the Photon secrets:
   `supabase secrets set PHOTON_PROJECT_ID=… PHOTON_PROJECT_SECRET=… --project-ref iltbflwrlybklasqpudg`.
   Without them it runs in dry-run (shows the code, no Messages link).

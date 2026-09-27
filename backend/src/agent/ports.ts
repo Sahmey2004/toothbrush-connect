@@ -10,7 +10,7 @@ export interface OutboxMessage {
   userId: string;
   channel: Channel;
   address: string;
-  kind: string; // check_in, reaction, reply, invite, done, …
+  kind: string; // check_in, reaction, reply, invite, done, welcome, …
   body: string; // text written by the database
   checkInId: string | null;
   effect?: string | null; // iMessage effect, e.g. "confetti" on DONE
@@ -73,10 +73,10 @@ export interface Inbox {
   }): Promise<InboundResult>;
 }
 
-// Phone numbers the agent should be able to message: iMessage rows of `channel_identities`. `verified` means
-// the user proved the number (phone sign-in, or texted the line); invited friends aren't verified yet.
+// Phone numbers the agent should be able to message: iMessage rows of `channel_identities`, invited friends
+// included.
 export interface ContactDirectory {
-  listPhones(): Promise<{ phone: string; name: string | null; verified: boolean }[]>;
+  listPhones(): Promise<{ phone: string; name: string | null }[]>;
 }
 
 // The provider's list of allowed numbers (Photon project Users). True if the phone was newly added.

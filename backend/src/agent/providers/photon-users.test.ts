@@ -1,26 +1,37 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createFakeInbox, createFakeProvider, createFixedLinks, createMemoryOutbox } from "../fakes.js";
 import { createAgent } from "../index.js";
 import type { InboundResult } from "../ports.js";
 import { createPhotonUsers, PhotonPlanLimit } from "./photon-users.js";
 
-// A fake Spectrum Cloud users API that starts with `existing` phones.
-function fakeApi(existing: string[], opts: { full?: boolean } = {}) {
+// A fake Spectrum Cloud users API that starts with `existing` phones. With `hold`, creates stay in flight until
+// `release()`, like a slow request.
+function fakeApi(existing: string[], opts: { full?: boolean; hold?: boolean } = {}) {
   const phones = new Set(existing);
-  const calls: { method: string; url: string; body?: unknown; auth: string | null }[] = [];
+  const calls: { method: string; url: string; body?: unknown; auth: string | null; signal?: AbortSignal | null }[] = [];
+  const held: (() => void)[] = [];
   const fetchImpl = (async (url: string, init: RequestInit = {}) => {
     const method = init.method ?? "GET";
     const body = init.body ? JSON.parse(init.body as string) : undefined;
-    calls.push({ method, url, body, auth: new Headers(init.headers).get("Authorization") });
+    calls.push({ method, url, body, auth: new Headers(init.headers).get("Authorization"), signal: init.signal });
     if (method === "GET") {
       return Response.json({ succeed: true, data: { users: [...phones].map((phoneNumber) => ({ phoneNumber })) } });
     }
+    if (opts.hold) await new Promise<void>((resolve) => held.push(resolve));
     if (opts.full) return new Response("limit", { status: 402 });
     phones.add(body.phoneNumber);
     return Response.json({ succeed: true, data: { phoneNumber: body.phoneNumber } });
   }) as typeof fetch;
-  return { fetchImpl, calls, phones };
+  const release = () => {
+    opts.hold = false;
+    for (const resolve of held.splice(0)) resolve();
+  };
+  return { fetchImpl, calls, phones, release, posts: () => calls.filter((c) => c.method === "POST") };
 }
+
+const SAM = "+13145550101";
+const verifyText = { type: "text", channel: "imessage", from: SAM, messageId: "m1", text: "Verify 123456" } as const;
+const CONNECTED = expect.stringMatching(/^\[✅ CONNECTED\]/);
 
 const photon = { projectId: "proj", projectSecret: "secret" };
 
@@ -34,6 +45,7 @@ describe("Photon users", () => {
     expect(post.url).toBe("https://spectrum.photon.codes/projects/proj/users/");
     expect(post.body).toEqual({ type: "shared", phoneNumber: "+13145550101", firstName: "Sam" });
     expect(post.auth).toBe(`Basic ${Buffer.from("proj:secret").toString("base64")}`);
+    expect(api.calls.every((c) => c.signal instanceof AbortSignal)).toBe(true); // requests time out
   });
 
   it("lists once, then skips phones Photon already has", async () => {
@@ -56,11 +68,34 @@ describe("Photon users", () => {
     const users = createPhotonUsers(photon, fakeApi([], { full: true }).fetchImpl);
     await expect(users.ensure("+13145550101")).rejects.toBeInstanceOf(PhotonPlanLimit);
   });
+
+  it("shares one create between overlapping calls, and only one of them learns the phone is new", async () => {
+    const api = fakeApi([], { hold: true });
+    const users = createPhotonUsers(photon, api.fetchImpl);
+    const both = [users.ensure(SAM, "Sam"), users.ensure(SAM, "Sam")];
+    await vi.waitFor(() => expect(api.posts()).not.toHaveLength(0));
+    api.release();
+    expect(await Promise.all(both)).toEqual([true, false]);
+    expect(api.posts()).toHaveLength(1);
+  });
+
+  it("doesn't remember a failed create: calls sharing it fail, and the next call tries again", async () => {
+    const opts = { full: true };
+    const api = fakeApi([], opts);
+    const users = createPhotonUsers(photon, api.fetchImpl);
+    const shared = await Promise.allSettled([users.ensure(SAM), users.ensure(SAM)]);
+    expect(shared.map((r) => r.status)).toEqual(["rejected", "rejected"]);
+
+    opts.full = false;
+    expect(await users.ensure(SAM)).toBe(true);
+    expect(api.posts()).toHaveLength(2);
+  });
 });
 
 describe("agent contact sync", () => {
   function setup(inboxResult: Partial<InboundResult> = {}) {
     const api = fakeApi(["+17634060903"]);
+    const registry = createPhotonUsers(photon, api.fetchImpl);
     const { provider, sent } = createFakeProvider();
     const box = createMemoryOutbox();
     const logs: string[] = [];
@@ -72,16 +107,16 @@ describe("agent contact sync", () => {
       contacts: {
         directory: {
           listPhones: async () => [
-            { phone: "+17634060903", name: "Hwaejin", verified: true },
-            { phone: "+13145550101", name: "Sam", verified: true },
-            { phone: "+13145550102", name: "Invited Ravi", verified: false },
+            { phone: "+17634060903", name: "Hwaejin" },
+            { phone: "+13145550101", name: "Sam" },
+            { phone: "+13145550102", name: "Invited Ravi" },
           ],
         },
-        registry: createPhotonUsers(photon, api.fetchImpl),
+        registry,
       },
       log: (l) => logs.push(l),
     });
-    return { agent, api, provider, sent, logs, ...box };
+    return { agent, api, registry, provider, sent, logs, ...box };
   }
 
   it("adds every phone in the database that Photon doesn't have yet", async () => {
@@ -91,23 +126,31 @@ describe("agent contact sync", () => {
     expect(api.calls.filter((c) => c.method === "POST")).toHaveLength(2);
   });
 
-  it("welcomes newly added users who signed up with their phone, once", async () => {
-    const { agent, sent } = setup();
+  it("never texts anyone, even phones new to Photon: the database queues the welcome (migration 0010)", async () => {
+    const { agent, api, sent } = setup();
     await agent.syncContacts();
     await agent.syncContacts();
-    // Hwaejin was already on Photon; invited Ravi gets the invite instead.
-    expect(sent.map((s) => s.address)).toEqual(["+13145550101"]);
-    expect(sent[0].text).toMatch(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./);
+    expect(api.posts()).toHaveLength(2);
+    expect(sent).toEqual([]);
   });
 
-  it("doesn't also welcome someone who just verified by texting the line", async () => {
+  it("greets a number that verified by texting with ✅ CONNECTED only", async () => {
     const { agent, provider, sent } = setup({ action: "verified", names: [] });
     provider.inbound = async function* () {
-      yield { type: "text", channel: "imessage", from: "+13145550101", messageId: "m1", text: "Verify 123456" } as const;
+      yield verifyText;
     };
     await agent.listen();
     await agent.syncContacts();
-    expect(sent.map((s) => s.text)).toEqual([expect.stringMatching(/^\[✅ CONNECTED\]/)]);
+    expect(sent.map((s) => s.text)).toEqual([CONNECTED]);
+  });
+
+  it("sends a queued welcome to a phone Photon doesn't have yet, registering it first", async () => {
+    const { agent, api, sent, enqueue, rows } = setup();
+    enqueue({ userId: "u", channel: "imessage", address: SAM, kind: "welcome", body: "[old SQL text]", checkInId: null });
+    await agent.drain();
+    expect(api.phones.has(SAM)).toBe(true);
+    expect(sent.map((s) => s.text)).toEqual([expect.stringMatching(/^\[ℹ️ POST ON THE WEB\] You're set up for Toothbrush Connect\./)]);
+    expect(rows[0].status).toBe("sent");
   });
 
   it("registers a brand-new recipient before sending to them", async () => {
