@@ -17,6 +17,7 @@ import {
   renderWelcome,
   renderReaction,
   renderReply,
+  renderReminder,
   renderUpdate,
   type UpdateItem,
 } from "./messages.js";
@@ -63,6 +64,8 @@ const samples: [string, string][] = [
   ["joined", renderJoined({ inviterNames: ["Sahmey"] }, LINK)],
   ["joined, no names", renderJoined({ inviterNames: [] }, LINK)],
   ["welcome", renderWelcome(LINK)],
+  ["morning reminder", renderReminder("[🌅 BRUSH TIME] Your morning brush is in 5 minutes.", LINK)],
+  ["night reminder", renderReminder("[🌙 BRUSH TIME] Your night brush is in 5 minutes.", LINK)],
   ...(["code_unknown", "code_expired", "phone_mismatch", "phone_taken"] as const).map(
     (problem): [string, string] => [`verification ${problem}`, renderCodeProblem(problem, LINK)],
   ),
@@ -147,5 +150,11 @@ describe("messages", () => {
 
   it("reject malformed sign-in codes", () => {
     expect(() => renderCode({ code: "12ab" }, LINK)).toThrow();
+  });
+
+  it("add the Start link to the reminder the database wrote", () => {
+    expect(renderReminder("[🌙 BRUSH TIME] Your night brush is in 5 minutes.", LINK)).toBe(
+      `[🌙 BRUSH TIME] Your night brush is in 5 minutes.\nStart brushing → ${LINK}`,
+    );
   });
 });

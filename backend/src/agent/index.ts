@@ -18,7 +18,7 @@ import { connectIMessage, createIMessageProvider } from "./providers/imessage.js
 import { createPhotonUsers, noContactRegistry } from "./providers/photon-users.js";
 import { createTerminalProvider } from "./providers/terminal.js";
 import type { MessagingProvider } from "./providers/types.js";
-import { renderUpdate, renderWelcome } from "./templates/messages.js";
+import { renderReminder, renderUpdate, renderWelcome } from "./templates/messages.js";
 
 export type * from "./ports.js";
 
@@ -37,8 +37,8 @@ const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export function createAgent({ provider, outbox, inbox, links, contacts, log = console.log }: AgentDeps) {
   const handleInbound = createInboundHandler({ provider, inbox, links });
-  // Check-ins are re-rendered with our templates and brushing-now gets its Join link (FR-D3: label first, link
-  // last); other kinds go out as the database wrote them.
+  // Check-ins are re-rendered with our templates; brushing-now gets its Join link and reminders their Start
+  // link (FR-D3: label first, link last); other kinds go out as the database wrote them.
   async function textFor(m: OutboxMessage): Promise<string> {
     switch (m.kind) {
       case "check_in": {
@@ -48,6 +48,8 @@ export function createAgent({ provider, outbox, inbox, links, contacts, log = co
       case "presence":
       case "presence_proactive":
         return `${m.body} Join → ${links.page("/brush")}`;
+      case "reminder":
+        return renderReminder(m.body, links.page("/start"));
       default:
         return m.body;
     }

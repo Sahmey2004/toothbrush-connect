@@ -85,6 +85,13 @@ export function renderBrushingNow(p: { friendName: string }, link: string): stri
   return `${label({ kind: "brushing_now" })} ${name(p.friendName)} is brushing. Join → ${assertLink(link)}`;
 }
 
+// [🌙 BRUSH TIME] Your night brush is in 5 minutes.
+// Start brushing → https://…/start
+// The database writes the first line (enqueue_brush_reminders, migration 0016); this adds the link.
+export function renderReminder(body: string, link: string): string {
+  return `${clean(body, 200)}\nStart brushing → ${assertLink(link)}`;
+}
+
 // [❤️ REACTION] Sam reacted 👋 to your check-in.
 export function renderReaction(p: { fromName: string; emoji: string }, link: string): string {
   const emoji = clean(p.emoji, 8);

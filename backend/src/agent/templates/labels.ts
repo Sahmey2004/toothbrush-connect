@@ -14,7 +14,10 @@ export type LabelSpec =
   | { kind: "code" }
   | { kind: "invite" }
   | { kind: "digest" }
-  | { kind: "post_on_web" };
+  | { kind: "post_on_web" }
+  // brushing reminders; the database writes these (enqueue_brush_reminders, migration 0016)
+  | { kind: "brush_time_morning" }
+  | { kind: "brush_time_night" };
 
 export const SCOPE_TEXT: Record<Scope, string> = { today: "today", this_week: "this week" };
 
@@ -27,6 +30,8 @@ const FIXED: Record<Exclude<LabelSpec["kind"], "update" | "batch">, string> = {
   invite: "👋 INVITE",
   digest: "📬 DIGEST",
   post_on_web: "ℹ️ POST ON THE WEB",
+  brush_time_morning: "🌅 BRUSH TIME",
+  brush_time_night: "🌙 BRUSH TIME",
 };
 
 // Everyone:      [😣 STRESSFUL · today]

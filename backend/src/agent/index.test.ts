@@ -60,6 +60,14 @@ describe("agent.drain", () => {
     expect(sent[0].text).toBe(`${body} Join → http://localhost:5173/brush`);
   });
 
+  it("adds the Start link to brushing reminders", async () => {
+    const { agent, sent, enqueue } = setup();
+    const body = "[🌙 BRUSH TIME] Your night brush is in 5 minutes.";
+    enqueue({ userId: "u", channel: "imessage", address: SAM, kind: "reminder", body, checkInId: null });
+    await agent.drain();
+    expect(sent[0].text).toBe(`${body}\nStart brushing → http://localhost:5173/start`);
+  });
+
   it("falls back to the database text if the check-in is gone", async () => {
     const { agent, sent, enqueue } = setup();
     enqueue({ ...checkInMsg(SAM), checkInId: "deleted" });
