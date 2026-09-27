@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { REMINDER_SLOTS, reminderPatch, toInputTime } from "../../lib/reminders";
 import type { Settings } from "../../types/api";
 
@@ -30,7 +30,8 @@ export function BrushReminders({ settings, hasPhone, onSave }: {
   );
 }
 
-// One slot: the switch saves the shown time (or null); a changed time is saved when the picker closes.
+// One slot: the switch saves the shown time (or null). A changed time is saved shortly after the last change, or
+// when the picker closes, whichever comes first: iOS Safari doesn't always blur the field when its wheel closes.
 function ReminderRow({ slot, value, disabled, onSave }: {
   slot: Slot;
   value: string | null;
@@ -42,6 +43,13 @@ function ReminderRow({ slot, value, disabled, onSave }: {
   useEffect(() => { if (value) setTime(toInputTime(value)); }, [value]);
   const id = `reminder-${slot.key}`;
 
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const commit = (t: string) => {
+    window.clearTimeout(timer.current);
+    if (on && t && t !== toInputTime(value)) onSave(t);
+  };
+
   return (
     <div className={`pop-rem${on ? "" : " is-off"}`}>
       <label className="pop-rem__name" htmlFor={id}><span aria-hidden="true">{slot.emoji}</span> {slot.label}</label>
@@ -49,8 +57,13 @@ function ReminderRow({ slot, value, disabled, onSave }: {
         className="pop-rem__switch" disabled={disabled} onClick={() => onSave(on ? null : time || slot.suggested)} />
       <input id={id} type="time" className="pop-set__input pop-rem__time" value={time} required
         disabled={disabled || !on}
-        onChange={(e) => setTime(e.target.value)}
-        onBlur={() => { if (on && time && time !== toInputTime(value)) onSave(time); }} />
+        onChange={(e) => {
+          const t = e.target.value;
+          setTime(t);
+          window.clearTimeout(timer.current);
+          timer.current = window.setTimeout(() => commit(t), 800);
+        }}
+        onBlur={() => commit(time)} />
     </div>
   );
 }
