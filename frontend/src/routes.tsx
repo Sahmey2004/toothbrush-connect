@@ -2,6 +2,7 @@ import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
 import { AppShell } from "./components/layout/AppShell";
 import { PopShell } from "./components/layout/PopShell";
+import { BrushLayout } from "./brush/BrushLayout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import { SignupPhone, SignupYou, SignupInvite } from "./pages/Signup";
@@ -35,17 +36,23 @@ export const router = createBrowserRouter([
   { path: "/signup/invite", element: <SignupInvite /> },
   { path: "/invite/:token", element: <Invite /> },
   { element: <RequireAuth onboarded={false} />, children: [{ path: "/onboarding", element: <Onboarding /> }] },
-  // Full-screen, outside the tab bar: the first thing a signed-in person sees.
-  { element: <RequireAuth pop />, children: [{ path: "/start", element: <Start /> }] },
-  // The pop app: bottom nav (Brush · Feed · Friends). Brush leads back out to /start.
+  // One brush session spans /start and the pop app, so the timer keeps running on the feed.
   {
     element: <RequireAuth pop />,
     children: [{
-      element: <PopShell />,
+      element: <BrushLayout />,
       children: [
-        { path: "/feed", element: <Feed /> },
-        { path: "/friends", element: <Friends /> },
-        { path: "/profile", element: <Profile /> },
+        // Full-screen, outside the tab bar: where you start and compose your update.
+        { path: "/start", element: <Start /> },
+        // The pop app: bottom nav (Brush · Feed · Friends) + the brushing bar on top.
+        {
+          element: <PopShell />,
+          children: [
+            { path: "/feed", element: <Feed /> },
+            { path: "/friends", element: <Friends /> },
+            { path: "/profile", element: <Profile /> },
+          ],
+        },
       ],
     }],
   },

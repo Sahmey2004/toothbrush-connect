@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { usePresence } from "../hooks/usePresence";
 import { useSession } from "../hooks/useSession";
+import { useCountdown } from "../hooks/useCountdown";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { haptics } from "../hooks/useHaptics";
 import { ThumbZoneLayout } from "../components/layout/ThumbZoneLayout";
@@ -40,7 +41,8 @@ export default function Brush() {
     haptics.overlap();
   });
   friendsRef.current = presence.friends;
-  const { session, remaining, finished, starting, start, end, dismissFinished } = useSession(me?.id);
+  const { session, finished, starting, start, end, dismissFinished } = useSession(me?.id);
+  const remaining = useCountdown(session?.ends_at ?? null);
   sessionRef.current = !!session;
   useWakeLock(!!session);
 

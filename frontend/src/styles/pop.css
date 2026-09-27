@@ -513,6 +513,18 @@ body.pop-body { background: var(--space, #0f0f12); }
 
 /* ── Feed + Friends page chrome ──────────────────────────────────────────── */
 
+.pop-toast {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--aqua);
+  color: var(--teal-ink);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  animation: pop-brushbar-in 240ms ease both;
+}
+
 .pop-feed__head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 20px; }
 .pop-feed__title {
   margin: 0;
@@ -623,10 +635,13 @@ body.pop-body { background: var(--space, #0f0f12); }
 
 /* ── App bar (brand + profile access) ────────────────────────────────────── */
 
-.pop-appbar {
+.pop-top {
   position: sticky;
   top: 0;
   z-index: 15;
+  background: var(--space);
+}
+.pop-appbar {
   width: 100%;
   max-width: 560px;
   margin: 0 auto;
@@ -635,8 +650,45 @@ body.pop-body { background: var(--space, #0f0f12); }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: var(--space);
 }
+
+/* the brushing countdown, pinned under the app bar after you send; vanishes at 0:00 */
+.pop-brushbar {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: pop-brushbar-in 240ms ease both;
+}
+@keyframes pop-brushbar-in {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+.pop-brushbar__ring { display: block; flex: none; }
+.pop-brushbar__clock {
+  font-family: var(--disp);
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--yellow);
+  font-variant-numeric: tabular-nums;
+}
+.pop-brushbar__label { font-size: 14px; font-weight: 700; color: var(--on-space-soft); }
+.pop-brushbar__end {
+  margin-left: auto;
+  min-height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 2px solid #3a3a44;
+  background: transparent;
+  color: var(--on-space);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.pop-brushbar__end:hover { border-color: var(--pink); color: var(--pink); }
 .pop-appbar__brand {
   display: inline-flex;
   align-items: center;

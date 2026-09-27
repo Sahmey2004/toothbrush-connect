@@ -285,6 +285,23 @@
   color: var(--on-space-soft);
 }
 
+/* Confirmation before anything is sent */
+.st-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.st-confirm__q {
+  margin: 0 0 4px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--on-space);
+  line-height: 1.25;
+}
+
 .st-note {
   margin: 0;
   text-align: center;
@@ -318,6 +335,7 @@
 .st-sent .st-prompt__q { margin-bottom: 8px; }
 .st-sent__face { margin: 0 0 12px; font-size: 64px; line-height: 1; }
 .st-sent__line { margin: 0; font-size: 17px; font-weight: 600; color: var(--on-space-soft); }
+.st-sent__brushing { margin: 12px 0 0; font-size: 15px; font-weight: 800; color: var(--aqua); }
 .st-undo {
   margin-top: 20px;
   height: 52px;

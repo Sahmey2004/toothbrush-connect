@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
+import { MiniTimer } from "../timer/MiniTimer";
 import "../../styles/pop.css";
 
 /* The signed-in shell in the pop identity: a scrolling page over a fixed bottom nav.
@@ -54,20 +55,23 @@ export function PopShell() {
 
   return (
     <div className="pop pop-app">
-      <header className="pop-appbar">
-        <NavLink to="/feed" className="pop-appbar__brand">
-          <svg width="28" height="28" viewBox="0 0 36 36" aria-hidden="true">
-            <circle cx="18" cy="18" r="16" fill="#FFE27A" />
-            <circle cx="25" cy="10" r="3.5" fill="#F2C94C" />
-            <circle cx="12" cy="18" r="2.6" fill="#17171C" />
-            <circle cx="21" cy="18" r="2.6" fill="#17171C" />
-          </svg>
-          toothbrush connect
-        </NavLink>
-        <NavLink to="/profile" className={meClass} aria-label="Profile and settings">
-          {initial}
-        </NavLink>
-      </header>
+      <div className="pop-top">
+        <header className="pop-appbar">
+          <NavLink to="/feed" className="pop-appbar__brand">
+            <svg width="28" height="28" viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="16" fill="#FFE27A" />
+              <circle cx="25" cy="10" r="3.5" fill="#F2C94C" />
+              <circle cx="12" cy="18" r="2.6" fill="#17171C" />
+              <circle cx="21" cy="18" r="2.6" fill="#17171C" />
+            </svg>
+            toothbrush connect
+          </NavLink>
+          <NavLink to="/profile" className={meClass} aria-label="Profile and settings">
+            {initial}
+          </NavLink>
+        </header>
+        <MiniTimer />
+      </div>
       <main className="pop-app__main">
         <Outlet />
       </main>

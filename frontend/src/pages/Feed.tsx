@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { usePresence } from "../hooks/usePresence";
@@ -68,6 +69,13 @@ function Card({ item }: { item: FeedItem }) {
 export default function Feed() {
   const { me } = useAuth();
   const { feed, loaded } = usePresence(me?.id);
+  const location = useLocation();
+  const [sent, setSent] = useState(() => !!(location.state as { justSent?: boolean } | null)?.justSent);
+  useEffect(() => {
+    if (!sent) return;
+    const t = setTimeout(() => setSent(false), 3200);
+    return () => clearTimeout(t);
+  }, [sent]);
   const groups = feed.reduce<Map<string, FeedItem[]>>((acc, item) => {
     const k = dayKey(item.delivered_at);
     acc.set(k, [...(acc.get(k) ?? []), item]);
@@ -76,6 +84,7 @@ export default function Feed() {
 
   return (
     <>
+      {sent && <div className="pop-toast" role="status">Sent to your circle ✓</div>}
       <header className="pop-feed__head">
         <h1 className="pop-feed__title">Updates</h1>
         <p className="pop-feed__sub">The last 14 days from your circle.</p>
