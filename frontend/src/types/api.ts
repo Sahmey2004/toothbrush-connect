@@ -18,12 +18,21 @@ export interface Settings {
   onboarded_at: string | null;
 }
 
+export interface PhoneVerification {
+  phone: string;
+  code: string;
+  photon_user_id: string | null;
+  line_number: string | null;
+  expires_at: string;
+}
+
 export interface Me {
   id: string;
   display_name: string;
   status: "guest" | "active";
   email: string | null;
-  phone: string | null;
+  phone: string | null;                        // verified number that gets iMessages
+  phone_verification: PhoneVerification | null; // started but not yet texted back
   settings: Settings;
 }
 

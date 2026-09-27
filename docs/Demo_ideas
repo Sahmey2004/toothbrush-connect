@@ -1,0 +1,15 @@
+# 30 secs present the problem and solution
+    # intro option 1: person's morning routine, brush teeth, see text notification -> cut to screen demo
+    # intro option 2: probelm first: receiving text -> scroll -> ...type -> cut to real life 
+    # (e.g. camera set to person raising their head as someone calls their name, zooms out to busy campus/work life)
+    # -> look down on their texts, shows hesitation, puts down the phone
+    # -> cut to text "TOO BUSY TO CATCH UP?" -> cut to screen demo
+# 90 secs run the product
+    # one individual view goes through full operation on app (30 sec)
+    # cut to 1 or 2 other senarios (not limited to students, e.g. expand to busy work life)
+    # -> cut to 3 screens parallel timing
+# 30 secs tech stack
+    # 
+# next steps, scaling, business impact
+    # scaling: deploying on cloud services, preferably amazon because it's easy to scale
+    # connect to whatsapp

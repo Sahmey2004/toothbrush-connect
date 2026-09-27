@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { usePresence } from "../hooks/usePresence";
 import { useSession } from "../hooks/useSession";
+import { useCountdown } from "../hooks/useCountdown";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { haptics } from "../hooks/useHaptics";
 import { ThumbZoneLayout } from "../components/layout/ThumbZoneLayout";
@@ -22,7 +23,7 @@ import { HoldBanner } from "../components/check-in/HoldBanner";
 import { describeAudience } from "../components/check-in/audience";
 import { ErrorNote } from "../components/common/ErrorNote";
 import { moodInfo, type Mood, type Scope } from "../types/moods";
-import type { Audience, CheckIn, FriendList } from "../types/api";
+import type { Audience, CheckIn, CircleMember, FriendList } from "../types/api";
 
 const MAX_CARDS = 4; // PRD: up to 4 friend updates, more summarised in one line
 
@@ -31,13 +32,17 @@ export default function Brush() {
   const [buddy, setBuddy] = useState<string | null>(null);
   const sessionRef = useRef(false);
 
+  // The callback is registered once, so it reads friends through a ref, not a stale closure.
+  const friendsRef = useRef<CircleMember[]>([]);
   const presence = usePresence(me?.id, (friendId) => {
     if (!sessionRef.current) return;
-    const f = presence.friends.find((x) => x.friend_id === friendId);
+    const f = friendsRef.current.find((x) => x.friend_id === friendId);
     setBuddy(f?.display_name || "A friend");
     haptics.overlap();
   });
-  const { session, remaining, finished, starting, start, end, dismissFinished } = useSession(me?.id);
+  friendsRef.current = presence.friends;
+  const { session, finished, starting, start, end, dismissFinished } = useSession(me?.id);
+  const remaining = useCountdown(session?.ends_at ?? null);
   sessionRef.current = !!session;
   useWakeLock(!!session);
 
@@ -205,6 +210,22 @@ export default function Brush() {
         <div className="sent__actions">
           <button className="btn btn--quiet" onClick={del} disabled={busy}>Delete</button>
           <Link className="btn btn--quiet" to="/timeline">See updates</Link>
+        </div>
+      </section>
+    );
+  } else if (presence.loaded && presence.friends.length === 0) {
+    const waitingOn = presence.circle.filter((c) => c.friendship_status === "pending" && c.requested_by_me).length;
+    action = (
+      <section className="sent">
+        <p className="label">[👋 INVITE]</p>
+        <p className="sent__line">Add a friend first.</p>
+        <p className="hold__text">
+          {waitingOn
+            ? `Your ${waitingOn === 1 ? "invite is" : `${waitingOn} invites are`} still waiting for a yes. Updates only go to friends who accepted.`
+            : "Updates only go to friends in your circle."}
+        </p>
+        <div className="sent__actions">
+          <Link className="btn btn--primary" to="/circle">Invite friends</Link>
         </div>
       </section>
     );

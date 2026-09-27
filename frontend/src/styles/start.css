@@ -1,0 +1,383 @@
+/* Start screen: the pop canvas (tokens from pop.css) with a single moon at its centre.
+   Idle: moon, title, button slide up and fade in. Launch: the button fades out and the clock
+   fades in under the moon. Docked: the moon and clock glide to the top (FLIP in Start.tsx)
+   and the prompt rises in below. */
+
+.st { color: var(--on-space); }
+
+/* ── Sky ─────────────────────────────────────────────────────────────────── */
+
+.st-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: st-fade 1200ms ease both;
+}
+.st-star { position: absolute; border-radius: 50%; }
+.st-sparkle { position: absolute; display: block; }
+
+/* ── Stage ───────────────────────────────────────────────────────────────── */
+
+.st-stage {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+}
+.st--docked .st-stage {
+  justify-content: flex-start;
+  gap: 0;
+  padding-top: max(20px, env(safe-area-inset-top));
+}
+
+/* ── Timer: the moon, with the clock hanging just below it ───────────────── */
+
+.st-timer {
+  --moon: min(300px, 74vw, 42dvh);
+  position: relative;
+  width: var(--moon);
+  flex: none;
+  transform-origin: top center;
+}
+.st--docked .st-timer {
+  --moon: 124px;
+  margin-bottom: calc(var(--moon) * 0.34 + 22px); /* room for the clock */
+}
+.st-timer__moon .moon { display: block; width: 100%; height: auto; overflow: visible; }
+
+.st-clock {
+  position: absolute;
+  top: calc(100% + var(--moon) * 0.02);
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--disp);
+  font-weight: 400;
+  font-size: calc(var(--moon) * 0.3);
+  line-height: 1.1;
+  color: var(--yellow);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  animation: st-clock-in 600ms 150ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.moon__rocket--parked { animation: st-bob 2.4s ease-in-out infinite; }
+
+/* ── Idle: title and button ──────────────────────────────────────────────── */
+
+.st-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+.st-title {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 400;
+  font-size: clamp(40px, 11vw, 64px);
+  line-height: 1;
+  letter-spacing: 0.2px;
+}
+.st-go {
+  height: 68px;
+  min-width: 260px;
+  padding: 0 36px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--aqua);
+  color: var(--teal-ink);
+  font-family: var(--ui);
+  font-size: 19px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 200ms ease;
+}
+.st-go:hover:not(:disabled) { box-shadow: 0 0 0 8px rgba(111, 224, 232, 0.16); }
+.st-go:active:not(:disabled) { transform: scale(0.97); }
+.st-go:disabled { cursor: progress; }
+
+.st-friends {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--on-space-soft);
+}
+.st-friends::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--aqua);
+}
+
+.st-error {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pink);
+  text-align: center;
+}
+
+/* entrance: one staggered slide-and-fade */
+.st--idle .st-timer__moon { animation: st-in 800ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.st--idle .st-title { animation: st-in 700ms 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.st--idle .st-go { animation: st-in 700ms 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.st--idle .st-friends { animation: st-in 700ms 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* launch: the title and button step aside for the clock */
+.st--launch .st-intro {
+  visibility: hidden;
+  opacity: 0;
+  animation: st-out 380ms ease both;
+}
+
+/* ── Docked: the prompt ──────────────────────────────────────────────────── */
+
+.st-prompt {
+  width: 100%;
+  max-width: 420px;
+  margin: auto 0; /* centred in the space under the docked timer */
+  padding-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.st-prompt > * { animation: st-in 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* the first reveal rises in as the timer settles at the top */
+.st-prompt--intro > * { animation-duration: 700ms; }
+.st-prompt--intro > :nth-child(1) { animation-delay: 900ms; }
+.st-prompt--intro > :nth-child(2) { animation-delay: 1000ms; }
+.st-prompt--intro > :nth-child(3) { animation-delay: 1100ms; }
+.st-prompt--intro > :nth-child(n + 4) { animation-delay: 1200ms; }
+
+.st-prompt__q {
+  margin: 0 0 20px;
+  font-family: var(--disp);
+  font-weight: 400;
+  font-size: clamp(30px, 8.4vw, 38px);
+  line-height: 1.05;
+  text-align: center;
+}
+
+.st-moods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.st-mood {
+  height: 76px;
+  border: 2px solid #2e2e37;
+  border-radius: 20px;
+  background: #1b1b21;
+  color: var(--on-space);
+  font-family: var(--ui);
+  font-size: 17px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease, opacity 120ms ease;
+}
+.st-mood:hover:not(:disabled) { border-color: var(--aqua); }
+.st-mood:active:not(:disabled) { transform: scale(0.97); }
+.st-mood.is-picked { background: var(--aqua); border-color: var(--aqua); color: var(--teal-ink); }
+.st-mood:disabled { cursor: default; }
+.st-mood:disabled:not(.is-picked) { opacity: 0.4; }
+.st-mood__emoji { font-size: 26px; line-height: 1; }
+
+/* ── Audience: who this update goes to ───────────────────────────────────── */
+
+.st-aud {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.st-aud__chip {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 2px solid #2e2e37;
+  background: #1b1b21;
+  color: var(--on-space);
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 120ms ease;
+}
+.st-aud__chip:hover { border-color: var(--aqua); }
+.st-aud__panel {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  background: #16161b;
+  border: 2px solid #2e2e37;
+  border-radius: 16px;
+  padding: 12px;
+  max-height: 30dvh;
+  overflow: auto;
+}
+.st-aud__opt {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 2px solid #2e2e37;
+  background: #1b1b21;
+  color: var(--on-space);
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.st-aud__opt:hover { border-color: var(--aqua); }
+.st-aud__opt.is-on { background: var(--aqua); border-color: var(--aqua); color: var(--teal-ink); }
+.st-aud__empty { margin: 0; color: var(--on-space-soft); font-size: 14px; }
+
+/* bubbly "End brushing now" button */
+.st-endnow { box-shadow: 0 6px 22px rgba(111, 224, 232, 0.38); }
+.st-sent .st-endnow { margin-top: 4px; }
+
+.st-line { position: relative; display: block; }
+.st-line input {
+  width: 100%;
+  height: 56px;
+  padding: 0 56px 0 18px;
+  border: 2px solid #2e2e37;
+  border-radius: 16px;
+  background: #16161b;
+  color: var(--on-space);
+  font-family: var(--ui);
+  font-size: 17px;
+  font-weight: 600;
+  transition: border-color 120ms ease;
+}
+.st-line input::placeholder { color: rgba(255, 255, 255, 0.45); }
+.st .st-line input:focus-visible { outline: none; border-color: var(--aqua); }
+.st-line__count {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-space-soft);
+}
+
+/* Confirmation before anything is sent */
+.st-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.st-confirm__q {
+  margin: 0 0 4px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--on-space);
+  line-height: 1.25;
+}
+
+.st-note {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--yellow);
+}
+.st-note:not(:empty) { margin-top: 12px; }
+.st-prompt .st-error { align-self: center; margin-top: 12px; }
+
+.st-end {
+  align-self: center;
+  margin-top: 16px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--on-space-soft);
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.st-end:hover { color: var(--on-space); }
+
+/* posted: the prompt gives way to a short confirmation */
+.st-sent { align-items: center; text-align: center; }
+.st-sent .st-prompt__q { margin-bottom: 8px; }
+.st-sent__face { margin: 0 0 12px; font-size: 64px; line-height: 1; }
+.st-sent__line { margin: 0; font-size: 17px; font-weight: 600; color: var(--on-space-soft); }
+.st-sent__brushing { margin: 12px 0 0; font-size: 15px; font-weight: 800; color: var(--aqua); }
+.st-undo {
+  margin-top: 20px;
+  height: 52px;
+  padding: 0 30px;
+  border: 2px solid #3a3a44;
+  border-radius: 999px;
+  background: none;
+  color: var(--on-space);
+  font-family: var(--ui);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+.st-undo:hover { border-color: var(--aqua); }
+
+/* ── Motion ──────────────────────────────────────────────────────────────── */
+
+/* hidden (not just transparent) while waiting on a delay, so nothing unseen can be tapped */
+@keyframes st-in {
+  from { visibility: hidden; opacity: 0; transform: translateY(28px); }
+  0.1% { visibility: visible; }
+  to { visibility: visible; opacity: 1; transform: none; }
+}
+@keyframes st-out {
+  from { visibility: visible; opacity: 1; transform: none; }
+  to { visibility: hidden; opacity: 0; transform: translateY(14px); }
+}
+@keyframes st-clock-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes st-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes st-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@media (max-height: 560px) {
+  .st-stage { gap: 18px; }
+  .st--docked .st-timer { --moon: 96px; }
+}

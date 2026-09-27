@@ -20,7 +20,7 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
 
   if (!me) return null;
-  if (me.settings.onboarded_at && !busy) return <Navigate to="/brush" replace />;
+  if (me.settings.onboarded_at && !busy) return <Navigate to="/start" replace />;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
