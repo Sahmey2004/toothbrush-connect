@@ -89,14 +89,11 @@ sample message without the database.
 - **Friends:** Circle → *Share your invite link*. The link survives Google sign-in and connects you as soon
   as the friend has set up. Adding someone by the email they signed in with also works.
 - **Phones:** Google accounts have no phone number, so nobody gets iMessages until they add one.
-  Circle or Settings → enter the number → *Text to verify*. Messages opens addressed to their Photon line
-  with "Verify 123456" filled in; when the agent receives it, the number is linked. Texting first is also
-  what lets Photon's shared line message that number. If friends had invited that number earlier, the
-  placeholder profile merges into the account (friendships and received updates carry over).
-- **Demo mode (migration 0007):** a number counts as verified as soon as it's entered; no text needed.
-  To restore texting to verify: `drop trigger demo_auto_verify_phone on public.phone_verifications;`
-- The `phone-connect` edge function registers the number with Photon; it needs the Photon secrets:
-  `supabase secrets set PHOTON_PROJECT_ID=… PHOTON_PROJECT_SECRET=… --project-ref iltbflwrlybklasqpudg`.
-  Without them it runs in dry-run (shows the code, no Messages link).
+  Circle or Settings → enter the number (`set_my_phone`, migration 0013). It's saved right away, without a
+  code (hackathon shortcut). Within a few seconds the agent adds it to Photon's Users and sends a welcome
+  text. If friends had invited that number earlier, the placeholder profile merges into the account
+  (friendships and received updates carry over).
+- Migrations 0007-0011 were retired and their numbers are not reused, because some databases already
+  applied them. `0006_phone_verification` stays because the hosted project has it applied.
 
 Tests: `npm test` (agent) and the SQL suites in `backend/supabase/tests/` (see *Local stack* above).
