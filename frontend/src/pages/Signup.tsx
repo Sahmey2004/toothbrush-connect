@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { signInWithGoogle } from "../lib/auth";
 import { savePendingPhone } from "../lib/pendingPhone";
+import { savePendingSignup } from "../lib/signupSetup";
 import { inviteUrl } from "../lib/site";
 import "../styles/pop.css";
 
@@ -228,11 +229,12 @@ export function SignupInvite() {
   const [error, setError] = useState<string | null>(null);
 
   // Sign-in is Google through Supabase — the app's single login. Return to "/" afterwards.
-  // If a phone was entered earlier, stash it so it survives the OAuth redirect; BrushLayout
-  // starts verifying it once signed in. It's optional — no phone, nothing stashed.
+  // What was entered survives the OAuth redirect: AccountGate sets the account up with the name and
+  // channel, and BrushLayout starts verifying the phone (optional — no phone, nothing stashed).
   const finish = async () => {
     const phone = (prev.phone || "").trim();
     if (phone) savePendingPhone(phone);
+    savePendingSignup({ name: prev.name, channel: prev.channel });
     const err = await signInWithGoogle("/");
     if (err) setError(err);
   };

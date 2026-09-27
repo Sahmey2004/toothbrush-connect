@@ -244,7 +244,14 @@ function SlideToStart({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-export default function Landing() {
+// On an invite link (pages/Invite.tsx) the headline names the friend, and sign-in comes back to the invite so the
+// app can accept it.
+export interface InviteContext {
+  inviterName: string | null;
+  returnTo: string;
+}
+
+export default function Landing({ invite, notice }: { invite?: InviteContext; notice?: string }) {
   const { session, me } = useAuth();
   // Keep the cosmic backdrop edge-to-edge (incl. overscroll) while this page is mounted.
   useEffect(() => {
@@ -252,12 +259,12 @@ export default function Landing() {
     return () => document.body.classList.remove("pop-body");
   }, []);
   const [error, setError] = useState<string | null>(null);
-  // Returning from Google sign-in can land here; send signed-in people into the app.
-  if (session && me) return <Navigate to={me.settings.onboarded_at ? "/start" : "/onboarding"} replace />;
+  // Returning from Google sign-in can land here; send signed-in people into the app (AccountGate sets up new ones).
+  if (session && me) return <Navigate to={invite ? "/friends" : "/start"} replace />;
 
-  // The one and only sign-in: Google through Supabase. Return to "/" so the pop landing routes onward.
+  // The one and only sign-in: Google through Supabase. Return here so the landing routes onward.
   const doSignIn = async () => {
-    const err = await signInWithGoogle("/");
+    const err = await signInWithGoogle(invite?.returnTo ?? "/");
     if (err) setError(err);
   };
 
@@ -276,14 +283,16 @@ export default function Landing() {
         <main className="pop-main">
           <section className="pop-hero">
             <div className="pop-hero__copy">
-              <span className="pop-eyebrow">Two minutes for the friends you miss</span>
+              <span className="pop-eyebrow">{invite ? "You're invited" : "Two minutes for the friends you miss"}</span>
               <h1 className="pop-hero__title">
-                Brush me to<br />the moon.
+                {invite ? <>{invite.inviterName || "A friend"} wants to<br />brush with you.</> : <>Brush me to<br />the moon.</>}
               </h1>
               <p className="pop-hero__lede">
-                Start your brush timer, share how today's going in one tap, then catch up on your
-                friends' updates. Nothing to install.
+                {invite
+                  ? "Slide to join. You'll see each other's quick updates in the two minutes you brush. Nothing to install."
+                  : "Start your brush timer, share how today's going in one tap, then catch up on your friends' updates. Nothing to install."}
               </p>
+              {notice && <p className="pop-error" role="status">{notice}</p>}
               <SlideToStart onComplete={doSignIn} />
               {error && <p className="pop-error" role="alert">{error}</p>}
               <div className="pop-proof">

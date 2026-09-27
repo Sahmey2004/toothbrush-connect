@@ -1,8 +1,8 @@
 {
   "name": "Moonbrush Connect",
   "short_name": "Brush",
-  "start_url": "/brush",
+  "start_url": "/start",
   "display": "standalone",
-  "background_color": "#EEF4F2",
-  "theme_color": "#0E3B39"
+  "background_color": "#0F0F12",
+  "theme_color": "#0F0F12"
 }

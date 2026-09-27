@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
+import { clearInviteNotice, peekInviteNotice } from "../../lib/pendingInvite";
 import { MiniTimer } from "../timer/MiniTimer";
 import "../../styles/pop.css";
 
@@ -48,6 +49,9 @@ export function PopShell() {
   const { pathname } = useLocation();
   // Profile has the "Text to verify" button, and keeps checking for the text.
   const verifyNudge = !!me?.phone_verification && pathname !== "/profile";
+  // "You're connected with Priya 🎉" after AccountGate accepted an invite link; shown once.
+  const [inviteNotice, setInviteNotice] = useState(peekInviteNotice);
+  useEffect(() => clearInviteNotice(), []);
   const initial = (me?.display_name?.trim()?.[0] ?? "🙂").toUpperCase();
 
   // Keep the whole document dark (incl. overscroll) while the signed-in app is mounted.
@@ -74,6 +78,12 @@ export function PopShell() {
           </NavLink>
         </header>
         <MiniTimer />
+        {inviteNotice && (
+          <p className="pop-verify" role="status">
+            {inviteNotice}{" "}
+            <button type="button" className="pop-verify__close" onClick={() => setInviteNotice(null)} aria-label="Dismiss">×</button>
+          </p>
+        )}
         {verifyNudge && (
           <NavLink to="/profile" className="pop-verify">
             One more step: text us a code to turn on iMessage updates →

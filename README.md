@@ -12,7 +12,7 @@ Photon stream (app.messages) → backend/src/agent → agent_handle_inbound (STO
 
 ```
 frontend/   React + TypeScript + Vite website (installable PWA), talks to Supabase via supabase-js
-  src/pages/        Landing, Login (Google), Onboarding, Invite, Brush, Circle, Timeline, Lists, Settings
+  src/pages/        Landing (Google sign-in), Signup, Invite, Start (brush + post), Feed, Friends, Profile
   src/components/   timer, check-in (mood chips, audience sheet, hold banner), feed, presence, layout
   src/hooks/        countdown, session, presence (Supabase Realtime), wake lock, haptics
   src/api/client.ts Typed wrappers around the Supabase RPCs
@@ -92,10 +92,11 @@ be verified (`phone_verifications`), recording the Photon line assigned to it.
 
 ### Connecting friends and phones
 
-- **Friends:** Circle → *Share your invite link*. The link survives Google sign-in and connects you as soon
-  as the friend has set up. Adding someone by the email they signed in with also works.
+- **Friends:** Friends → *Share your invite link*. The link survives Google sign-in and connects you as soon
+  as the friend has set up (a new account is set up automatically, no onboarding page). Adding someone by
+  the email they signed in with also works.
 - **Phones:** Google accounts have no phone number, so nobody gets iMessages until they add one, by texting
-  in (migrations 0006 and 0015). Profile, Circle or Settings → enter the number (`start_phone_verification`).
+  in (migrations 0006 and 0015). Profile → enter the number (`start_phone_verification`).
   Within a few seconds the agent adds it to Photon's Users and records the user's Photon line; the website
   then shows *Text to verify*, which opens Messages addressed to that line with "Verify 123456" filled in.
   When the text arrives, `agent_handle_inbound` links the number and the agent answers with a welcome.

@@ -685,6 +685,28 @@ body.pop-body { background: var(--space, #0f0f12); }
   text-decoration: none;
 }
 
+.pop-verify__close {
+  float: right;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* shown if a new account couldn't be set up (AccountGate) */
+.pop-gate {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--space);
+}
+
 /* the brushing countdown, pinned under the app bar after you send; vanishes at 0:00 */
 .pop-brushbar {
   max-width: 560px;
