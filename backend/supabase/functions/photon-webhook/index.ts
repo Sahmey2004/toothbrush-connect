@@ -3,7 +3,7 @@
 import { admin } from "../_shared/admin.ts";
 import { type Channel, sendMessage } from "../_shared/photon.ts";
 
-const SITE_URL = Deno.env.get("SITE_URL") ?? "http://localhost:5173";
+const SITE_URL = Deno.env.get("SITE_URL") ?? "https://toothbrush-connect.vercel.app";
 const WEBHOOK_SECRET = Deno.env.get("PHOTON_WEBHOOK_SECRET");
 
 // TODO(photon): map Spectrum's webhook payload and signature onto this shape.

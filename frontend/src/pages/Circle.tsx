@@ -5,6 +5,7 @@ import { usePresence } from "../hooks/usePresence";
 import { Avatar } from "../components/common/Avatar";
 import { ErrorNote } from "../components/common/ErrorNote";
 import { checkInLabel, timeAgo } from "../lib/labels";
+import { inviteUrl } from "../lib/site";
 import { PhoneVerify } from "../components/phone/PhoneVerify";
 import type { CircleMember } from "../types/api";
 
@@ -37,7 +38,7 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
     setError(null);
     try {
       const token = await api.createInviteLink();
-      const url = `${location.origin}/invite/${token}`;
+      const url = inviteUrl(token);
       setLink(url);
       if (navigator.share) await navigator.share({ title: "Brush with me", text: "Let's catch up while we brush our teeth", url }).catch(() => {});
       else await navigator.clipboard?.writeText(url).catch(() => {});

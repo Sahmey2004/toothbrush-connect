@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { usePresence } from "../hooks/usePresence";
+import { inviteUrl } from "../lib/site";
 import { moodInfo } from "../types/moods";
 import type { CircleMember } from "../types/api";
 import "../styles/pop.css";
@@ -33,7 +34,7 @@ function AddFriend({ onChange }: { onChange: () => void }) {
     setError(null);
     try {
       const token = await api.createInviteLink();
-      const url = `${location.origin}/invite/${token}`;
+      const url = inviteUrl(token);
       if (navigator.share) await navigator.share({ title: "Brush with me", text: "Let's catch up while we brush", url });
       else if (navigator.clipboard) { await navigator.clipboard.writeText(url); setOk("Invite link copied."); }
     } catch (err) {

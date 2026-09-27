@@ -37,7 +37,6 @@ const dbSchema = z.object({
     .string()
     .min(1)
     .refine((k) => !k.startsWith("sb_publishable_"), "needs the secret (service role) key, not the publishable key"),
-  SITE_URL: z.url(),
 });
 
 export interface DatabaseConfig {
@@ -45,21 +44,30 @@ export interface DatabaseConfig {
   siteUrl: string;
 }
 
-// For main.ts. Falls back to the frontend's variable names so one .env serves both. In photon mode messages go
-// to real phones, so their links must point at the public site, not the dev server.
+// The website that links in texts open. People open them on their phones, so it's the public site even when the
+// agent runs on a laptop; set SITE_URL only for another deploy (or a dev server in terminal mode).
+export const PUBLIC_SITE_URL = "https://toothbrush-connect.vercel.app";
+
+export function loadSiteUrl(env: Env = process.env): string {
+  const parsed = z.url().safeParse(env.SITE_URL || PUBLIC_SITE_URL);
+  if (!parsed.success) fail(parsed.error);
+  const site = parsed.data.replace(/\/$/, "");
+  if (env.AGENT_MODE === "photon" && ["localhost", "127.0.0.1"].includes(new URL(site).hostname)) {
+    throw new Error(
+      `Invalid agent config: SITE_URL is ${site}, but photon mode texts real phones. Leave SITE_URL unset for ` +
+        `${PUBLIC_SITE_URL}, or set it to another public deploy`,
+    );
+  }
+  return site;
+}
+
+// For main.ts. Falls back to the frontend's variable names so one .env serves both.
 export function loadDatabaseConfig(env: Env = process.env): DatabaseConfig {
   const parsed = dbSchema.safeParse({
     SUPABASE_URL: env.SUPABASE_URL || env.VITE_SUPABASE_URL,
     SUPABASE_SECRET_KEY: env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY,
-    SITE_URL: env.SITE_URL || env.FRONTEND_ORIGIN || "http://localhost:5173",
   });
   if (!parsed.success) fail(parsed.error);
   const c = parsed.data;
-  if (env.AGENT_MODE === "photon" && ["localhost", "127.0.0.1"].includes(new URL(c.SITE_URL).hostname)) {
-    throw new Error(
-      `Invalid agent config: SITE_URL is ${c.SITE_URL}, but photon mode texts real phones. Set SITE_URL to the ` +
-        "public site, e.g. https://toothbrush-connect.vercel.app",
-    );
-  }
-  return { db: { url: c.SUPABASE_URL, secretKey: c.SUPABASE_SECRET_KEY }, siteUrl: c.SITE_URL.replace(/\/$/, "") };
+  return { db: { url: c.SUPABASE_URL, secretKey: c.SUPABASE_SECRET_KEY }, siteUrl: loadSiteUrl(env) };
 }

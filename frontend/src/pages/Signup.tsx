@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { signInWithGoogle } from "../lib/auth";
 import { savePendingPhone } from "../lib/pendingPhone";
+import { inviteUrl } from "../lib/site";
 import "../styles/pop.css";
 
 /* The phone-first sign-up flow, in the pop identity. Three screens — phone, name & channel,
@@ -236,7 +237,7 @@ export function SignupInvite() {
     if (err) setError(err);
   };
 
-  const inviteLink = `${window.location.origin}/invite/demo`;
+  const inviteLink = inviteUrl("demo");
   const shareLink = async () => {
     const text = `${name} wants to catch up while brushing. Join: ${inviteLink}`;
     try {

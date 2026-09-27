@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDatabaseConfig } from "./config.js";
+import { loadDatabaseConfig, loadSiteUrl } from "./config.js";
 import { createFakeInbox, createFakeProvider, createFixedLinks, createMemoryOutbox } from "./fakes.js";
 import { createAgent, createSiteLinks, type DeliverableCheckIn } from "./index.js";
 import { RecipientNotReachable } from "./providers/types.js";
@@ -127,11 +127,17 @@ describe("createSiteLinks", () => {
 describe("loadDatabaseConfig", () => {
   const base = { VITE_SUPABASE_URL: "https://x.supabase.co", SUPABASE_SECRET_KEY: "sb_secret_abc" };
 
-  it("reads the frontend's URL variable and defaults the site to the dev server", () => {
+  it("reads the frontend's URL variable and defaults the site to the public website", () => {
     expect(loadDatabaseConfig(base)).toEqual({
       db: { url: "https://x.supabase.co", secretKey: "sb_secret_abc" },
-      siteUrl: "http://localhost:5173",
+      siteUrl: "https://toothbrush-connect.vercel.app",
     });
+  });
+
+  it("never takes the site from FRONTEND_ORIGIN (the dev server in .env.example)", () => {
+    expect(loadDatabaseConfig({ ...base, FRONTEND_ORIGIN: "http://localhost:5173" }).siteUrl).toBe(
+      "https://toothbrush-connect.vercel.app",
+    );
   });
 
   it("rejects the publishable key", () => {
@@ -139,7 +145,7 @@ describe("loadDatabaseConfig", () => {
   });
 
   it("refuses a localhost site in photon mode, where links go to real phones", () => {
-    expect(() => loadDatabaseConfig({ ...base, AGENT_MODE: "photon" })).toThrow(/SITE_URL/);
+    expect(() => loadDatabaseConfig({ ...base, AGENT_MODE: "photon", SITE_URL: "http://localhost:5173" })).toThrow(/SITE_URL/);
     expect(() => loadDatabaseConfig({ ...base, AGENT_MODE: "photon", SITE_URL: "http://127.0.0.1:5173" })).toThrow(/SITE_URL/);
     expect(loadDatabaseConfig({ ...base, AGENT_MODE: "photon", SITE_URL: "https://toothbrush-connect.vercel.app/" }).siteUrl).toBe(
       "https://toothbrush-connect.vercel.app",
@@ -148,5 +154,13 @@ describe("loadDatabaseConfig", () => {
 
   it("requires a key", () => {
     expect(() => loadDatabaseConfig({ VITE_SUPABASE_URL: base.VITE_SUPABASE_URL })).toThrow(/SUPABASE_SECRET_KEY/);
+  });
+});
+
+describe("loadSiteUrl", () => {
+  it("is the public website unless SITE_URL says otherwise", () => {
+    expect(loadSiteUrl({})).toBe("https://toothbrush-connect.vercel.app");
+    expect(loadSiteUrl({ SITE_URL: "http://localhost:5173/" })).toBe("http://localhost:5173");
+    expect(() => loadSiteUrl({ AGENT_MODE: "photon", SITE_URL: "http://localhost:5173" })).toThrow(/SITE_URL/);
   });
 });
