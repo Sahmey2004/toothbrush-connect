@@ -19,6 +19,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const [lists, setLists] = useState<FriendList[]>([]);
   const [name, setName] = useState(me?.display_name ?? "");
+  const [phone, setPhone] = useState(me?.phone ?? "");
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +98,24 @@ export default function Settings() {
 
       <section className="panel form">
         <h2 className="section-title">Messages</h2>
+        <form className="form form--inline" onSubmit={async (e) => {
+          e.preventDefault();
+          setError(null); setSaved(null);
+          try {
+            await api.setMyPhone(phone);
+            await refreshMe();
+            setSaved(phone.trim() ? "Phone saved. Look for a welcome text in a few seconds." : "Phone removed");
+          } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+        }}>
+          <label className="field">
+            <span>Your phone (for iMessage)</span>
+            <input type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 000-0002" />
+          </label>
+          <button className="btn btn--quiet">Save phone</button>
+        </form>
+        <p className="hint">
+          {me.phone ? `Friends' updates are texted to ${me.phone}.` : "Add your number to get friends' updates by text."}
+        </p>
         <label className="field">
           <span>Get friends' updates by</span>
           <select value={s.preferred_channel} onChange={(e) => save({ preferred_channel: e.target.value as Channel }, "Channel")}>
