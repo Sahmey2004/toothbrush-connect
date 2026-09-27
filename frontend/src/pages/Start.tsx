@@ -150,7 +150,7 @@ export default function Start() {
     }
   };
 
-  // Tapping a mood selects (or unselects) it — a mood is optional; you can send just a line.
+  // Typing comes first; a mood is the no-typing option. Tap one to select (or unselect) it.
   const choose = (mood: Mood) => {
     setPending((cur) => (cur === mood ? null : mood));
     setNote(null);
@@ -158,10 +158,10 @@ export default function Start() {
     haptics.tap();
   };
 
-  // Ask before sending. Need a mood OR a line — but not both.
+  // Ask before sending. Something is required — words, a mood, or both.
   const askSend = () => {
     if (!pending && !line.trim()) {
-      setNote("Pick a face or add a line first.");
+      setNote("Type something or tap a mood first.");
       return;
     }
     setNote(null);
@@ -276,7 +276,15 @@ export default function Start() {
                 </div>
               )}
             </div>
-            <div className="st-moods" role="group" aria-label="How's today going?">
+            <label className="st-line">
+              <span className="visually-hidden">Your update for your friends</span>
+              <textarea value={line} maxLength={140} rows={5} autoFocus placeholder="Tell your friends how it's going…"
+                onChange={(e) => { setLine(e.target.value); setNote(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); askSend(); } }} />
+              {line.length > 100 && <span className="st-line__count">{140 - line.length}</span>}
+            </label>
+            <p className="st-or" id="st-or">or just tap a mood</p>
+            <div className="st-moods" role="group" aria-labelledby="st-or">
               {MOODS.map((m) => (
                 <button key={m.id} type="button" className={`st-mood${pending === m.id ? " is-picked" : ""}`}
                   onClick={() => choose(m.id)} disabled={sending} aria-pressed={pending === m.id}>
@@ -285,12 +293,6 @@ export default function Start() {
                 </button>
               ))}
             </div>
-            <label className="st-line">
-              <span className="visually-hidden">A line for your friends</span>
-              <input value={line} maxLength={140} placeholder="Add a line if you like" enterKeyHint="done"
-                onChange={(e) => setLine(e.target.value)} />
-              {line.length > 120 && <span className="st-line__count">{140 - line.length}</span>}
-            </label>
             <button type="button" className="st-go st-send" onClick={askSend} disabled={!pending && !line.trim()}>Send</button>
             <p className="st-note" role="status">{note}</p>
             {leave}

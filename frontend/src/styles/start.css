@@ -170,25 +170,28 @@
   text-align: center;
 }
 
+/* the no-typing option: one row of four, smaller than the text box above it */
 .st-moods {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
 }
 .st-mood {
-  height: 76px;
+  height: 72px;
+  padding: 0 4px;
   border: 2px solid #2e2e37;
-  border-radius: 20px;
+  border-radius: 18px;
   background: #1b1b21;
   color: var(--on-space);
   font-family: var(--ui);
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 800;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 5px;
   cursor: pointer;
   transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease, opacity 120ms ease;
 }
@@ -259,31 +262,48 @@
 .st-endnow { box-shadow: 0 6px 22px rgba(111, 224, 232, 0.38); }
 .st-sent .st-endnow { margin-top: 4px; }
 
-.st-line { position: relative; display: block; }
-.st-line input {
+/* the main input: typing comes first, so it's the biggest thing on the screen */
+.st-line { position: relative; display: block; margin-bottom: 14px; }
+.st-line textarea {
+  display: block;
   width: 100%;
-  height: 56px;
-  padding: 0 56px 0 18px;
+  min-height: 190px;
+  height: 26dvh;
+  max-height: 280px;
+  padding: 18px 18px 34px;
   border: 2px solid #2e2e37;
-  border-radius: 16px;
+  border-radius: 22px;
   background: #16161b;
   color: var(--on-space);
   font-family: var(--ui);
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
+  line-height: 1.4;
+  resize: none;
   transition: border-color 120ms ease;
 }
-.st-line input::placeholder { color: rgba(255, 255, 255, 0.45); }
-.st .st-line input:focus-visible { outline: none; border-color: var(--aqua); }
+.st-line textarea::placeholder { color: rgba(255, 255, 255, 0.45); }
+.st .st-line textarea:focus-visible { outline: none; border-color: var(--aqua); }
 .st-line__count {
   position: absolute;
   right: 18px;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 12px;
   font-size: 14px;
   font-weight: 700;
   color: var(--on-space-soft);
 }
+
+.st-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-space-soft);
+}
+.st-or::before,
+.st-or::after { content: ""; flex: 1; height: 2px; border-radius: 1px; background: #2e2e37; }
 
 /* Confirmation before anything is sent */
 .st-confirm {
@@ -303,6 +323,8 @@
 }
 .st-confirm__note { margin: 0 0 4px; text-align: center; font-size: 15px; color: var(--on-space-soft); }
 .st-send { margin-top: 4px; }
+/* nothing typed or picked yet: grey, not dimmed (the prompt's rise-in animation owns opacity) */
+.st-send:disabled { background: #26262e; color: var(--on-space-soft); }
 
 .st-note {
   margin: 0;
