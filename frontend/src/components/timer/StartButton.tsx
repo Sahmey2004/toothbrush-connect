@@ -1,14 +1,15 @@
-// FR-T3: one tap anywhere in the bottom of the screen starts a session.
-export function StartButton({ onStart, busy, friendsBrushing }: { onStart: () => void; busy: boolean; friendsBrushing: number }) {
+import { Icon } from "../icons/Icon";
+
+// FR-W3: the whole bottom of the idle screen is one Start target, a moonbeam-gold launch pad.
+export function StartButton({ onStart, busy, friendsBrushing }: { onStart: () => void; busy: boolean; friendsBrushing: string[] }) {
+  const hint = friendsBrushing.length === 0 ? "Two minutes, one update, your people"
+    : friendsBrushing.length === 1 ? `${friendsBrushing[0]} is brushing now`
+    : `${friendsBrushing.length} friends are brushing now`;
   return (
-    <button className="start" onClick={onStart} disabled={busy}>
-      <span className="start__icon" aria-hidden>🪥</span>
-      <span className="start__title">{busy ? "Starting…" : "Start brushing"}</span>
-      <span className="start__hint">
-        {friendsBrushing > 0
-          ? `${friendsBrushing} ${friendsBrushing === 1 ? "friend is" : "friends are"} brushing now`
-          : "Two minutes, one update, your people"}
-      </span>
+    <button className="launch" onClick={onStart} disabled={busy}>
+      <span className="launch__icon"><Icon name="arc-up" size={28} /></span>
+      <span className="launch__title">{busy ? "Starting…" : "Start brushing"}</span>
+      <span className="launch__hint">{hint}</span>
     </button>
   );
 }

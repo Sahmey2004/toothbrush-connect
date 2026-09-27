@@ -1,6 +1,5 @@
-// Core loop: big Start target, countdown, friend cards, mood chips, audience chip, 30 s hold with Undo.
+// Core loop: Start, the moon timer, friend cards, one-tap moods, audience, 30 s hold with Undo.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { usePresence } from "../hooks/usePresence";
@@ -8,54 +7,57 @@ import { useSession } from "../hooks/useSession";
 import { useCountdown } from "../hooks/useCountdown";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { haptics } from "../hooks/useHaptics";
-import { ThumbZoneLayout } from "../components/layout/ThumbZoneLayout";
-import { BrushingNowBar } from "../components/presence/BrushingNowBar";
-import { BrushBuddyBanner } from "../components/presence/BrushBuddyBanner";
-import { CountdownRing } from "../components/timer/CountdownRing";
-import { StartButton } from "../components/timer/StartButton";
-import { FriendCard } from "../components/feed/FriendCard";
-import { MoodChips } from "../components/check-in/MoodChips";
-import { ScopeToggle } from "../components/check-in/ScopeToggle";
-import { AddLine } from "../components/check-in/AddLine";
-import { AudienceChip } from "../components/check-in/AudienceChip";
+import { useShell } from "../components/layout/AppShell";
+import { BrushScreen } from "../components/brush/BrushScreen";
 import { AudienceSheet } from "../components/check-in/AudienceSheet";
-import { HoldBanner } from "../components/check-in/HoldBanner";
+import { SentPill, Snackbar } from "../components/check-in/Snackbar";
 import { describeAudience } from "../components/check-in/audience";
-import { ErrorNote } from "../components/common/ErrorNote";
+import type { Drift } from "../components/presence/BrushingNowBar";
 import { moodInfo, type Mood, type Scope } from "../types/moods";
-import type { Audience, CheckIn, CircleMember, FriendList } from "../types/api";
+import type { Audience, CheckIn, FriendList } from "../types/api";
 
 const MAX_CARDS = 4; // PRD: up to 4 friend updates, more summarised in one line
+const TOTAL = 120_000;
 
 export default function Brush() {
   const { me, refreshMe } = useAuth();
-  const [buddy, setBuddy] = useState<string | null>(null);
+  const { setImmersive } = useShell();
   const sessionRef = useRef(false);
+  const reactionsSince = useRef(new Date().toISOString());
+  const seenReactions = useRef(new Set<string>());
+  const [drifts, setDrifts] = useState<Drift[]>([]);
 
-  // The callback is registered once, so it reads friends through a ref, not a stale closure.
-  const friendsRef = useRef<CircleMember[]>([]);
-  const presence = usePresence(me?.id, (friendId) => {
-    if (!sessionRef.current) return;
-    const f = friendsRef.current.find((x) => x.friend_id === friendId);
-    setBuddy(f?.display_name || "A friend");
-    haptics.overlap();
-  });
-  friendsRef.current = presence.friends;
+  const presence = usePresence(
+    me?.id,
+    () => { if (sessionRef.current) haptics.overlap(); },
+    async () => {
+      // A friend reacted to me: let it drift up from their avatar.
+      const rs = await api.reactionsToMe(reactionsSince.current).catch(() => []);
+      const fresh = rs.filter((r) => !seenReactions.current.has(r.id) && r.kind !== "reply");
+      fresh.forEach((r) => seenReactions.current.add(r.id));
+      if (!fresh.length) return;
+      const add: Drift[] = fresh.map((r) => ({ key: r.id, fromId: r.from_user, kind: r.kind as Drift["kind"] }));
+      setDrifts((d) => [...d, ...add]);
+      setTimeout(() => setDrifts((d) => d.filter((x) => !add.includes(x))), 2800);
+    },
+  );
   const { session, finished, starting, start, end, dismissFinished } = useSession(me?.id);
   const remaining = useCountdown(session?.ends_at ?? null);
   sessionRef.current = !!session;
   useWakeLock(!!session);
+  useEffect(() => { setImmersive(!!session); return () => setImmersive(false); }, [session, setImmersive]);
 
   const [lists, setLists] = useState<FriendList[]>([]);
   const [scope, setScope] = useState<Scope>("today");
   const [line, setLine] = useState("");
   const [override, setOverride] = useState<Audience | null>(null); // chosen before posting
   const [checkIn, setCheckIn] = useState<CheckIn | null>(null);
-  const [recipients, setRecipients] = useState<number | null>(null);
   const [sheet, setSheet] = useState<"before" | "hold" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shownIds, setShownIds] = useState<string[]>([]);
+  const [sentVisible, setSentVisible] = useState(false);
+  const [reactionSent, setReactionSent] = useState<string | null>(null);
 
   useEffect(() => { api.lists().then(setLists).catch(() => {}); }, []);
 
@@ -92,9 +94,12 @@ export default function Brush() {
     return () => clearTimeout(t);
   }, [checkIn]);
 
+  // Show the "Sent" pill for a few seconds after delivery, then hand the utility zone back to End.
   useEffect(() => {
-    if (checkIn?.status === "delivered") api.recipientCount(checkIn.id).then(setRecipients).catch(() => {});
-    else setRecipients(null);
+    if (checkIn?.status !== "delivered") return;
+    setSentVisible(true);
+    const t = setTimeout(() => setSentVisible(false), 6000);
+    return () => clearTimeout(t);
   }, [checkIn?.id, checkIn?.status]);
 
   const guard = useCallback(async (fn: () => Promise<void>) => {
@@ -104,11 +109,11 @@ export default function Brush() {
 
   const post = (mood: Mood) => guard(async () => {
     haptics.tap();
-    setCheckIn(await api.postCheckIn(mood, scope, line, override));
+    setCheckIn(await api.postCheckIn(mood, scope, line, checkInAudience ?? override));
   });
 
   const confirmSheet = (a: Audience, makeDefault: boolean) => guard(async () => {
-    if (sheet === "hold" && checkIn) {
+    if (sheet === "hold" && checkIn?.status === "held") {
       setCheckIn(await api.setAudience(checkIn.id, a, makeDefault));
     } else {
       setOverride(a);
@@ -129,7 +134,6 @@ export default function Brush() {
     return (unseen.length ? unseen : presence.feed).slice(0, 12);
   }, [presence.feed, shownIds]);
   const visible = cards.slice(0, MAX_CARDS);
-  const extra = cards.length - visible.length;
 
   const unseenVisible = visible.filter((v) => !v.seen_at && !shownIds.includes(v.check_in_id)).map((v) => v.check_in_id).join(",");
   useEffect(() => {
@@ -139,130 +143,82 @@ export default function Brush() {
     api.markSeen(ids).catch(() => {});
   }, [session, unseenVisible]);
 
-  // Swipe down on the display to end early (FR-T5).
+  // Swipe down on the moon to end early (FR-W6).
   const swipeStart = useRef<number | null>(null);
-  const onPointerDown = (e: React.PointerEvent) => { swipeStart.current = e.clientY; };
-  const onPointerUp = (e: React.PointerEvent) => {
-    if (session && swipeStart.current !== null && e.clientY - swipeStart.current > 120) end();
-    swipeStart.current = null;
+  const displayProps = {
+    onPointerDown: (e: React.PointerEvent) => { swipeStart.current = e.clientY; },
+    onPointerUp: (e: React.PointerEvent) => {
+      if (session && swipeStart.current !== null && e.clientY - swipeStart.current > 120) end();
+      swipeStart.current = null;
+    },
   };
 
   if (!me) return null;
 
-  const caughtUp = new Set(presence.feed.filter((f) => shownIds.includes(f.check_in_id)).map((f) => f.author_id)).size;
+  const brushingNow = presence.brushingNow.map((f) => ({ id: f.friend_id, name: f.display_name || "A friend" }));
+  const react = (kind: "wave" | "heart" | "laugh") => {
+    haptics.tap();
+    setReactionSent(kind);
+    setTimeout(() => setReactionSent(null), 2000);
+    const buddy = presence.brushingNow[0];
+    if (buddy?.latest_check_in_id) api.react(buddy.latest_check_in_id, kind).catch(() => {});
+  };
 
-  const display = (
-    <div className="brush-display" onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
-      {session && <CountdownRing remainingMs={remaining} />}
-      {finished && !session && (
-        <div className="done">
-          <p className="label">[🎉 DONE]</p>
-          <p className="done__title">2 minutes up.</p>
-          <p className="done__line">
-            {caughtUp > 0 ? `You caught up with ${caughtUp} ${caughtUp === 1 ? "friend" : "friends"}.` : "Clean teeth, clear head."}
-          </p>
-        </div>
-      )}
-      <div className="cards">
-        {visible.map((item) => <FriendCard key={item.check_in_id} item={item} />)}
-        {extra > 0 && <Link className="cards__more" to="/timeline">+{extra} more {extra === 1 ? "update" : "updates"}</Link>}
-        {presence.loaded && presence.feed.length === 0 && !session && (
-          <div className="empty">
-            {presence.friends.length === 0 ? (
-              <>
-                <p>Your circle is empty. Friends' updates will show up here.</p>
-                <Link className="btn btn--primary" to="/circle">Invite a friend</Link>
-              </>
-            ) : (
-              <p>No updates yet. Post yours and your friends will see it after 30 seconds.</p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const caughtUp = [...new Map(presence.feed.filter((f) => shownIds.includes(f.check_in_id))
+    .map((f) => [f.author_id, { id: f.author_id, name: f.author_name }])).values()];
 
-  let action;
-  if (!session && !finished) {
-    action = <StartButton onStart={() => guard(async () => { await start(); })} busy={starting} friendsBrushing={presence.brushingNow.length} />;
-  } else if (!session && finished) {
-    action = (
-      <div className="composer composer--done">
-        {checkIn && checkIn.status !== "undone" && (
-          <p className="composer__status">You posted {moodInfo(checkIn.mood).emoji} {moodInfo(checkIn.mood).label}.</p>
-        )}
-        <button className="btn btn--primary btn--big" onClick={() => { dismissFinished(); setCheckIn(null); }}>Done</button>
-      </div>
-    );
-  } else if (checkIn?.status === "held") {
-    action = (
-      <HoldBanner checkIn={checkIn} audienceLabel={describe(checkInAudience!)} busy={busy}
-        onUndo={undo} onChoose={() => setSheet("hold")} />
-    );
-  } else if (checkIn?.status === "delivered") {
-    const m = moodInfo(checkIn.mood);
-    action = (
-      <section className="sent">
-        <p className="label">[✅ POSTED · {m.word}]</p>
-        <p className="sent__line">
-          Sent to {recipients === null ? "your circle" : `${recipients} ${recipients === 1 ? "friend" : "friends"}`}.
-        </p>
-        <div className="sent__actions">
-          <button className="btn btn--quiet" onClick={del} disabled={busy}>Delete</button>
-          <Link className="btn btn--quiet" to="/timeline">See updates</Link>
-        </div>
-      </section>
-    );
-  } else if (presence.loaded && presence.friends.length === 0) {
-    const waitingOn = presence.circle.filter((c) => c.friendship_status === "pending" && c.requested_by_me).length;
-    action = (
-      <section className="sent">
-        <p className="label">[👋 INVITE]</p>
-        <p className="sent__line">Add a friend first.</p>
-        <p className="hold__text">
-          {waitingOn
-            ? `Your ${waitingOn === 1 ? "invite is" : `${waitingOn} invites are`} still waiting for a yes. Updates only go to friends who accepted.`
-            : "Updates only go to friends in your circle."}
-        </p>
-        <div className="sent__actions">
-          <Link className="btn btn--primary" to="/circle">Invite friends</Link>
-        </div>
-      </section>
-    );
-  } else {
-    action = (
-      <div className="composer">
-        <p className="composer__prompt">How was your {scope === "today" ? "day" : "week"}?</p>
-        <AudienceChip label={describe(composerAudience)} onOpen={() => setSheet("before")} />
-        <MoodChips onPick={post} disabled={busy} />
-        <div className="composer__row">
-          <ScopeToggle value={scope} onChange={setScope} />
-          <AddLine value={line} onChange={setLine} />
-        </div>
-      </div>
-    );
+  const phase = session ? "active" : finished ? "done" : "idle";
+  const posted = checkIn && checkIn.status !== "undone" ? checkIn : null;
+
+  let snackbar = null;
+  if (session && posted?.status === "held") {
+    snackbar = <Snackbar deliverAt={posted.deliver_at} audienceLabel={describe(checkInAudience!)} busy={busy}
+      onUndo={undo} onChange={() => setSheet("hold")} />;
+  } else if (session && posted?.status === "delivered" && sentVisible) {
+    snackbar = <SentPill audienceLabel={describe(checkInAudience!)} onDelete={del} busy={busy} />;
   }
 
   return (
-    <>
-      <BrushBuddyBanner name={buddy} onDone={() => setBuddy(null)} />
-      <ThumbZoneLayout
-        status={<BrushingNowBar friends={presence.brushingNow} />}
-        display={display}
-        action={<>{action}<ErrorNote error={error} /></>}
-        utility={session ? (
-          <button className="end" onClick={end}>End session <span aria-hidden>↓</span><span className="visually-hidden"> (or swipe down)</span></button>
-        ) : undefined}
-      />
-      <AudienceSheet
-        open={sheet !== null}
-        initial={sheet === "hold" && checkInAudience ? checkInAudience : composerAudience}
-        friends={presence.friends}
-        lists={lists}
-        confirmLabel={sheet === "hold" ? "Send now" : "Use this"}
-        onClose={() => setSheet(null)}
-        onConfirm={confirmSheet}
-      />
-    </>
+    <BrushScreen
+      phase={phase}
+      elapsedMs={session ? TOTAL - remaining : finished ? TOTAL : 0}
+      hand={me.settings.dominant_hand}
+      brushingNow={brushingNow}
+      drifts={drifts}
+      cards={visible}
+      moreCount={cards.length - visible.length}
+      audienceLabel={describe(checkInAudience ?? composerAudience)}
+      scope={scope}
+      line={line}
+      selectedMood={posted?.mood ?? null}
+      moodsLocked={posted?.status === "delivered"}
+      snackbar={snackbar}
+      reactionSent={reactionSent}
+      caughtUp={caughtUp}
+      doneNote={posted ? `Your ${moodInfo(posted.mood).label.toLowerCase()} update went to ${describe(checkInAudience!)}.` : undefined}
+      starting={starting}
+      busy={busy}
+      error={error}
+      displayProps={displayProps}
+      onStart={() => guard(async () => { await start(); })}
+      onEnd={end}
+      onDismissDone={() => { dismissFinished(); setCheckIn(null); setShownIds([]); }}
+      onPickMood={post}
+      onScope={setScope}
+      onLine={setLine}
+      onOpenAudience={() => setSheet(posted?.status === "held" ? "hold" : "before")}
+      onReact={react}
+      sheet={
+        <AudienceSheet
+          open={sheet !== null}
+          initial={sheet === "hold" && checkInAudience ? checkInAudience : composerAudience}
+          friends={presence.friends}
+          lists={lists}
+          confirmLabel={sheet === "hold" ? "Done, send now" : "Done"}
+          onClose={() => setSheet(null)}
+          onConfirm={confirmSheet}
+        />
+      }
+    />
   );
 }

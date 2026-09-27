@@ -6,6 +6,8 @@ import { Avatar } from "../components/common/Avatar";
 import { ErrorNote } from "../components/common/ErrorNote";
 import { checkInLabel, timeAgo } from "../lib/labels";
 import { PhoneVerify } from "../components/phone/PhoneVerify";
+import { Link } from "react-router-dom";
+import { Icon, MoodIcon } from "../components/icons/Icon";
 import type { CircleMember } from "../types/api";
 
 function InviteForm({ onInvited }: { onInvited: () => void }) {
@@ -85,7 +87,7 @@ function FriendRow({ f, onChange }: { f: CircleMember; onChange: () => void }) {
         </p>
         {f.latest_mood ? (
           <p className="friend__latest">
-            <span className="label">[{checkInLabel(f.latest_mood, f.latest_scope!, f.latest_audience_label!)}]</span>{" "}
+            <span className={`friend__mood mood-tone--${f.latest_mood}`}><MoodIcon mood={f.latest_mood} size={18} />{checkInLabel(f.latest_mood, f.latest_scope!, f.latest_audience_label!)}</span>{" "}
             {f.latest_text && `“${f.latest_text}” `}<span className="muted">{timeAgo(f.latest_at!)}</span>
           </p>
         ) : (
@@ -114,7 +116,10 @@ export default function Circle() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Your circle</h1>
+      <header className="page-head page-head--row">
+        <h1 className="page-title">Friends</h1>
+        <Link className="btn btn--quiet btn--small" to="/lists"><Icon name="lists" size={18} /> Lists</Link>
+      </header>
       {showPhoneCard && <PhoneVerify compact />}
 
       {incoming.length > 0 && (

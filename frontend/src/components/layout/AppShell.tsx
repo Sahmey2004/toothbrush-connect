@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Outlet, useLocation, useOutletContext } from "react-router-dom";
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { clearPendingInvite, peekPendingInvite } from "../../lib/pendingInvite";
+import { NavBar, type Tab } from "./NavBar";
 
-const TABS = [
-  { to: "/brush", label: "Brush", icon: "🪥" },
-  { to: "/timeline", label: "Updates", icon: "💬" },
-  { to: "/circle", label: "Circle", icon: "👥" },
-  { to: "/lists", label: "Lists", icon: "🗂️" },
-  { to: "/settings", label: "Settings", icon: "⚙️" },
-];
+const TAB_FOR: Record<string, Tab> = {
+  "/timeline": "feed", "/circle": "friends", "/lists": "friends", "/brush": "brush", "/journey": "journey", "/settings": "settings",
+};
+
+interface ShellContext { setImmersive: (on: boolean) => void }
+export const useShell = () => useOutletContext<ShellContext>();
 
 export function AppShell() {
   const { me } = useAuth();
+  const { pathname } = useLocation();
+  const [immersive, setImmersive] = useState(false); // true during an active brush session
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,15 +42,8 @@ export function AppShell() {
           <button className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss">×</button>
         </div>
       )}
-      <main className="shell__main"><Outlet /></main>
-      <nav className="tabs" aria-label="Main">
-        {TABS.map((t) => (
-          <NavLink key={t.to} to={t.to} className={({ isActive }) => `tab${isActive ? " is-active" : ""}`}>
-            <span className="tab__icon" aria-hidden>{t.icon}</span>
-            <span className="tab__label">{t.label}</span>
-          </NavLink>
-        ))}
-      </nav>
+      <main className="shell__main"><Outlet context={{ setImmersive } satisfies ShellContext} /></main>
+      {!immersive && <NavBar active={TAB_FOR[pathname] ?? null} />}
     </div>
   );
 }

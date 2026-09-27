@@ -1,22 +1,38 @@
 import { Avatar } from "../common/Avatar";
-import type { CircleMember } from "../../types/api";
+import { Icon } from "../icons/Icon";
 
-// Status zone: who is brushing right now (read-only).
-export function BrushingNowBar({ friends }: { friends: CircleMember[] }) {
+export interface Brusher { id: string; name: string }
+export interface Drift { key: string; fromId: string; kind: "wave" | "heart" | "laugh" }
+
+// Status zone (read-only): friends brushing now, each in a gold orbit ring. During a Brush Buddy
+// overlap the line reads as a live banner, and reactions they send drift up from their avatar.
+export function BrushingNowBar({ friends, overlap = false, drifts = [], idleText }: {
+  friends: Brusher[]; overlap?: boolean; drifts?: Drift[]; idleText?: string;
+}) {
+  const text = friends.length === 0 ? (idleText ?? "A quiet sky tonight")
+    : friends.length === 1 ? `${friends[0].name} is brushing ${overlap ? "too" : "now"}`
+    : `${friends[0].name} and ${friends.length - 1 === 1 ? friends[1].name : `${friends.length - 1} others`} are brushing ${overlap ? "too" : "now"}`;
   return (
-    <div className="now-bar" aria-live="polite">
-      {friends.length === 0 ? (
-        <span className="now-bar__empty">No one else is brushing right now</span>
-      ) : (
-        <>
-          <span className="now-bar__faces">
-            {friends.slice(0, 5).map((f) => <Avatar key={f.friend_id} id={f.friend_id} name={f.display_name} size={34} live />)}
-          </span>
-          <span className="now-bar__text">
-            {friends.length === 1 ? `${friends[0].display_name} is brushing` : `${friends.length} friends brushing`}
-          </span>
-        </>
+    <div className={`now-bar${overlap && friends.length ? " now-bar--live" : ""}`} role="status">
+      {friends.length > 0 && (
+        <span className="now-bar__faces">
+          {friends.slice(0, 4).map((f) => (
+            <span key={f.id} className="now-bar__face">
+              <Avatar id={f.id} name={f.name} size={34} live />
+              {drifts.filter((d) => d.fromId === f.id).map((d) => (
+                <span key={d.key} className="drift" aria-hidden="true">
+                  <Icon name="sparkle" size={12} className="drift__star" />
+                  <Icon name={d.kind} size={16} />
+                </span>
+              ))}
+            </span>
+          ))}
+        </span>
       )}
+      <span className={friends.length ? "now-bar__text" : "now-bar__empty"}>
+        {overlap && friends.length > 0 && <span className="now-bar__dot" aria-hidden="true" />}
+        {text}
+      </span>
     </div>
   );
 }

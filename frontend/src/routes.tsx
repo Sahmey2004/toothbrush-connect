@@ -16,7 +16,9 @@ import Profile from "./pages/Profile";
 import Circle from "./pages/Circle";
 import Timeline from "./pages/Timeline";
 import Lists from "./pages/Lists";
+import Journey, { JourneyDemo } from "./pages/Journey";
 import Settings from "./pages/Settings";
+import DesignSheet from "./pages/DesignSheet";
 
 // `pop`: pages in the dark pop identity wait on a dark screen, not the light tiles.
 function RequireAuth({ onboarded = true, pop = false }: { onboarded?: boolean; pop?: boolean }) {
@@ -35,6 +37,7 @@ export const router = createBrowserRouter([
   { path: "/signup/you", element: <SignupYou /> },
   { path: "/signup/invite", element: <SignupInvite /> },
   { path: "/invite/:token", element: <Invite /> },
+  { path: "/design", element: <DesignSheet /> },
   { element: <RequireAuth onboarded={false} />, children: [{ path: "/onboarding", element: <Onboarding /> }] },
   // One brush session spans /start and the pop app, so the timer keeps running on the feed.
   {
@@ -44,13 +47,14 @@ export const router = createBrowserRouter([
       children: [
         // Full-screen, outside the tab bar: where you start and compose your update.
         { path: "/start", element: <Start /> },
-        // The pop app: bottom nav (Brush · Feed · Friends) + the brushing bar on top.
+        // The pop app: bottom nav (Brush · Feed · Journey · Friends) + the brushing bar on top.
         {
           element: <PopShell />,
           children: [
             { path: "/feed", element: <Feed /> },
             { path: "/friends", element: <Friends /> },
             { path: "/profile", element: <Profile /> },
+            { path: "/journey", element: <Journey /> },
           ],
         },
       ],
@@ -68,6 +72,11 @@ export const router = createBrowserRouter([
         { path: "/settings", element: <Settings /> },
       ],
     }],
+  },
+  // Public demo of the crew journey in the pop shell, on example data.
+  {
+    element: <BrushLayout />,
+    children: [{ element: <PopShell />, children: [{ path: "/demo/journey", element: <JourneyDemo /> }] }],
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

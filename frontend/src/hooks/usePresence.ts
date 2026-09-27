@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import { subscribeToCircle } from "../realtime/channels";
 import type { BrushSession, CircleMember, FeedItem } from "../types/api";
 
 // Circle, feed and live presence for the signed-in user, kept fresh by Supabase Realtime.
-export function usePresence(myId: string | undefined, onFriendStarted?: (friendId: string) => void) {
+export function usePresence(
+  myId: string | undefined,
+  onFriendStarted?: (friendId: string) => void,
+  onReaction?: () => void,
+) {
+  const reactionRef = useRef(onReaction);
+  reactionRef.current = onReaction;
   const [circle, setCircle] = useState<CircleMember[]>([]);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [brushing, setBrushing] = useState<Record<string, string>>({}); // friendId → ends_at
@@ -39,6 +45,7 @@ export function usePresence(myId: string | undefined, onFriendStarted?: (friendI
         refreshFeed();
         refreshCircle();
       },
+      onReaction: () => reactionRef.current?.(),
       onCircleChange: refreshCircle,
     });
     // onFriendStarted is intentionally read once per subscription.
