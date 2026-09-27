@@ -15,6 +15,8 @@ export interface Settings {
   preferred_channel: Channel;
   default_list_id: string | null;
   presence_list_id: string | null;
+  morning_reminder: string | null; // "07:30:00"; null = off. Texted 5 minutes before (migration 0016)
+  night_reminder: string | null;
   onboarded_at: string | null;
 }
 

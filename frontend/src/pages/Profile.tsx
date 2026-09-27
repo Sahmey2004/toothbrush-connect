@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { usePhoneVerification } from "../hooks/usePhoneVerification";
+import { BrushReminders } from "../components/profile/BrushReminders";
 import { clearPhoneProblem, peekPhoneProblem } from "../lib/pendingPhone";
 import { formatPhone } from "../lib/phone";
 import type { Channel, Settings } from "../types/api";
@@ -158,6 +159,9 @@ export default function Profile() {
             </form>
           )}
         </section>
+
+        <BrushReminders settings={s} hasPhone={!!me.phone}
+          onSave={(patch) => save(() => api.updateSettings(patch, me.id), "Reminders")} />
 
         <section className="pop-set__panel">
           <h2 className="pop-set__panel-title">Get friends' updates by</h2>
