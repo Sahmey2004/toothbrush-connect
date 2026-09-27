@@ -33,6 +33,8 @@ export const api = {
     const { error } = await supabase.from("profiles").update({ display_name: name.trim() }).eq("id", userId);
     if (error) throw new Error(error.message);
   },
+  // Save the number friends' updates are texted to. An empty string removes it.
+  setMyPhone: (phone: string) => rpc<Me>("set_my_phone", { p_phone: phone }),
   exportData: () => rpc<unknown>("export_my_data"),
   deleteAccount: () => rpc<void>("delete_my_account"),
 
