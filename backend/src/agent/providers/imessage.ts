@@ -1,16 +1,8 @@
 // Photon-managed iMessage through Spectrum. Outbound opens a DM by phone number; inbound comes from the
 // SDK's own message stream, so no webhook or public URL is needed (see PLAN.md "Photon Spectrum facts").
 import { Spectrum, type Message } from "spectrum-ts";
-import { effect as withEffect, imessage, type IMessageMessageEffect } from "@spectrum-ts/imessage";
+import { imessage } from "@spectrum-ts/imessage";
 import { RecipientNotReachable, type InboundEvent, type MessagingProvider } from "./types.js";
-
-// outbound_messages.effect → iMessage screen effect. Unknown names are sent without one.
-const EFFECTS: Record<string, IMessageMessageEffect> = {
-  confetti: imessage.effect.message.confetti,
-  celebration: imessage.effect.message.celebration,
-  fireworks: imessage.effect.message.fireworks,
-  balloons: imessage.effect.message.balloons,
-};
 
 export async function connectIMessage(photon: { projectId: string; projectSecret: string }) {
   return Spectrum({ ...photon, providers: [imessage.config()] });
@@ -33,11 +25,6 @@ export function toInboundEvent(message: Message): InboundEvent | null {
       return { ...base, type: "text", text: content.text };
     case "reaction":
       return { ...base, type: "reaction", emoji: content.emoji, targetMessageId: content.target.id };
-    case "reply":
-      // A threaded reply to one of our updates is a private "> reply" to its author.
-      return content.content.type === "text"
-        ? { ...base, type: "text", text: `>${content.content.text}`, replyTo: content.target.id }
-        : null;
     default:
       return null; // attachments, typing, read receipts, …
   }
@@ -48,11 +35,10 @@ export function createIMessageProvider(app: SpectrumApp): MessagingProvider {
   return {
     channel: "imessage",
 
-    async send(address, text, options) {
+    async send(address, text) {
       try {
         const space = await im.space.create(address);
-        const screenEffect = options?.effect ? EFFECTS[options.effect] : undefined;
-        const sent = await space.send(screenEffect ? withEffect(text, screenEffect) : text);
+        const sent = await space.send(text);
         if (!sent) throw new Error("Spectrum returned no message for send");
         return { providerMessageId: sent.id };
       } catch (e) {

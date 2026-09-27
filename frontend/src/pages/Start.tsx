@@ -61,7 +61,8 @@ export default function Start() {
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [line, setLine] = useState("");
-  const [pending, setPending] = useState<Mood | null>(null); // mood chosen, awaiting confirmation
+  const [pending, setPending] = useState<Mood | null>(null); // selected mood (optional)
+  const [confirming, setConfirming] = useState(false);
   const [sending, setSending] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,17 +150,27 @@ export default function Start() {
     }
   };
 
-  // Tapping a mood only selects it — nothing is sent until you confirm.
+  // Tapping a mood selects (or unselects) it — a mood is optional; you can send just a line.
   const choose = (mood: Mood) => {
-    setPending(mood);
+    setPending((cur) => (cur === mood ? null : mood));
     setNote(null);
     setError(null);
     haptics.tap();
   };
 
+  // Ask before sending. Need a mood OR a line — but not both.
+  const askSend = () => {
+    if (!pending && !line.trim()) {
+      setNote("Pick a face or add a line first.");
+      return;
+    }
+    setNote(null);
+    setConfirming(true);
+  };
+
   // Confirmed: send your update, then move to the feed — the timer keeps running there.
   const confirmSend = async () => {
-    if (!pending || sending) return;
+    if (sending || (!pending && !line.trim())) return;
     setSending(true);
     setError(null);
     const audience: Audience =
@@ -174,7 +185,7 @@ export default function Start() {
       setSending(false);
     }
   };
-  const cancelSend = () => setPending(null);
+  const cancelSend = () => { setConfirming(false); setSending(false); };
 
   // Explicit early end: stop the session completely and go home.
   const endNow = async () => {
@@ -227,7 +238,20 @@ export default function Start() {
         </div>
 
         {phase === "docked" ? (
-          <form className={`st-prompt${intro ? " st-prompt--intro" : ""}`} onSubmit={(e) => { e.preventDefault(); setNote("Now pick a face to send it."); }}>
+          <form className={`st-prompt${intro ? " st-prompt--intro" : ""}`} onSubmit={(e) => { e.preventDefault(); askSend(); }}>
+            {confirming ? (
+              <div className="st-confirm">
+                <p className="st-confirm__q">
+                  Send {pending ? `${moodInfo(pending).emoji} ${moodInfo(pending).label}` : "your note"} to {audLabel}?
+                </p>
+                {line.trim() && <p className="st-confirm__note">“{line.trim()}”</p>}
+                <button type="button" className="st-go" onClick={confirmSend} disabled={sending}>
+                  {sending ? "Sending…" : "Send it"}
+                </button>
+                <button type="button" className="st-end" onClick={cancelSend} disabled={sending}>Cancel</button>
+              </div>
+            ) : (
+            <>
             <h1 className="st-prompt__q">How's today going?</h1>
             <div className="st-aud">
               <button type="button" className="st-aud__chip" onClick={() => setAudOpen((o) => !o)} aria-expanded={audOpen}>
@@ -267,21 +291,10 @@ export default function Start() {
                 onChange={(e) => setLine(e.target.value)} />
               {line.length > 120 && <span className="st-line__count">{140 - line.length}</span>}
             </label>
-            {pending ? (
-              <div className="st-confirm">
-                <p className="st-confirm__q">
-                  Send {moodInfo(pending).emoji} {moodInfo(pending).label} to {audLabel}?
-                </p>
-                <button type="button" className="st-go" onClick={confirmSend} disabled={sending}>
-                  {sending ? "Sending…" : "Send it"}
-                </button>
-                <button type="button" className="st-end" onClick={cancelSend} disabled={sending}>Cancel</button>
-              </div>
-            ) : (
-              <>
-                <p className="st-note" role="status">{note}</p>
-                {leave}
-              </>
+            <button type="button" className="st-go st-send" onClick={askSend} disabled={!pending && !line.trim()}>Send</button>
+            <p className="st-note" role="status">{note}</p>
+            {leave}
+            </>
             )}
             {error && <p className="st-error" role="alert">{error}</p>}
           </form>

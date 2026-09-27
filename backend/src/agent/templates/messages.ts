@@ -8,7 +8,7 @@ export const MAX_BATCH = 3; // FR-D4
 
 export interface UpdateItem {
   authorName: string;
-  mood: Mood;
+  mood: Mood | null; // null = a text-only check-in (no mood/emoji)
   scope: Scope;
   audience: AudienceLabel;
   text?: string | null;
@@ -66,16 +66,17 @@ export function renderBatch(items: UpdateItem[], link: string): string {
     if (i.audience === "close_circle") tags.push("close circle");
     if (i.audience === "just_for_you") tags.push("just for you");
     const q = quoted(i.text);
-    return `${MOODS[i.mood].emoji} ${name(i.authorName)} (${tags.join(", ")})${q ? `: ${q}` : ""}`;
+    const emoji = i.mood ? `${MOODS[i.mood].emoji} ` : "";
+    return `${emoji}${name(i.authorName)} (${tags.join(", ")})${q ? `: ${q}` : ""}`;
   });
   return `${label({ kind: "batch", count: items.length })}\n${lines.join("\n")}\nSee them all → ${assertLink(link)}`;
 }
 
 // [✏️ EDITED] Priya: 😣 Stressful · today "moving apartments, send help"
 export function renderEdited(item: Omit<UpdateItem, "audience">, link: string): string {
-  const { emoji, label: moodLabel } = MOODS[item.mood];
+  const moodPart = item.mood ? `${MOODS[item.mood].emoji} ${MOODS[item.mood].label} · ` : "";
   const q = quoted(item.text);
-  const body = `${name(item.authorName)}: ${emoji} ${moodLabel} · ${SCOPE_TEXT[item.scope]}${q ? ` ${q}` : ""}`;
+  const body = `${name(item.authorName)}: ${moodPart}${SCOPE_TEXT[item.scope]}${q ? ` ${q}` : ""}`;
   return compose(label({ kind: "edited" }), body, "See the update", link);
 }
 
@@ -143,35 +144,6 @@ export function renderNothingPending(link: string): string {
 export function renderWelcome(link: string): string {
   const body = "You're set up for Toothbrush Connect. Friends' updates will arrive here. Text STOP to opt out.";
   return compose(label({ kind: "post_on_web" }), body, "Post yours on the website", link);
-}
-
-// Answers to "Verify 123456" from the website's phone check. These carry no link: the verification text is
-// usually the first exchange a number has with the line, and Photon's deliverability guide warns against links
-// in that first message.
-
-const listNames = (names: string[]) =>
-  names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
-
-// [✅ CONNECTED] You're all set, Hwaejin! Updates from Sahmey, Roy and 1 more will land here. Text STOP any time.
-export function renderVerified(p: { displayName?: string | null; friendNames: string[] }): string {
-  const hi = p.displayName?.trim() ? `, ${name(p.displayName)}` : "";
-  const friends = p.friendNames.map(name);
-  const from = friends.length ? `Updates from ${listNames(friends)} will land here.` : "Friends' updates will land here.";
-  return `${label({ kind: "connected" })} You're all set${hi}! ${from} Text STOP any time.`;
-}
-
-export type CodeProblem = "code_unknown" | "code_expired" | "phone_mismatch" | "phone_taken";
-
-const CODE_PROBLEMS: Record<CodeProblem, string> = {
-  code_unknown: "That code didn't work. Get a new one on the website and text it again.",
-  code_expired: "That code didn't work. Get a new one on the website and text it again.",
-  phone_mismatch: "That code is for a different number. Text it from the phone you entered on the website.",
-  phone_taken: "This number is already linked to another account.",
-};
-
-// [🔑 CODE] That code didn't work. Get a new one on the website and text it again.
-export function renderCodeProblem(problem: CodeProblem): string {
-  return `${label({ kind: "code" })} ${CODE_PROBLEMS[problem]}`;
 }
 
 // [👋 INVITE] You're in Sahmey's circle. Their updates will arrive here.

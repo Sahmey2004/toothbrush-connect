@@ -16,6 +16,7 @@ export default function Profile() {
   const { me, refreshMe, signOut } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState(me?.display_name ?? "");
+  const [phone, setPhone] = useState(me?.phone ?? "");
   const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +76,25 @@ export default function Profile() {
               <button type="submit" className="pop-set__btn pop-set__btn--primary">Save name</button>
             </div>
           </form>
+        </section>
+
+        <section className="pop-set__panel">
+          <h2 className="pop-set__panel-title">Your phone number</h2>
+          <form className="pop-set__field" onSubmit={(e) => { e.preventDefault(); save(() => api.setMyPhone(phone), "Phone number"); }}>
+            <label className="pop-set__label" htmlFor="phone">So the agent can text you your friends' updates</label>
+            <input id="phone" className="pop-set__input" type="tel" inputMode="tel" autoComplete="tel"
+              placeholder="(555) 010-2233" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <div className="pop-set__row">
+              <button type="submit" className="pop-set__btn pop-set__btn--primary">Save number</button>
+              {me.phone && (
+                <button type="button" className="pop-set__btn pop-set__btn--ghost"
+                  onClick={() => { setPhone(""); save(() => api.setMyPhone(""), "Phone number"); }}>Remove</button>
+              )}
+            </div>
+          </form>
+          <p className="pop-set__meta">
+            {me.phone ? `Connected as ${me.phone}.` : "Without a number you'll only see updates on the website."}
+          </p>
         </section>
 
         <section className="pop-set__panel">

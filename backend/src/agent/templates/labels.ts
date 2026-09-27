@@ -5,7 +5,7 @@ import type { ServerEvent } from "../../domain/events.js";
 export type AudienceLabel = Extract<ServerEvent, { type: "check_in.delivered" }>["audienceLabel"];
 
 export type LabelSpec =
-  | { kind: "update"; mood: Mood; scope: Scope; audience: AudienceLabel }
+  | { kind: "update"; mood: Mood | null; scope: Scope; audience: AudienceLabel }
   | { kind: "batch"; count: number }
   | { kind: "brushing_now" }
   | { kind: "edited" }
@@ -14,9 +14,7 @@ export type LabelSpec =
   | { kind: "code" }
   | { kind: "invite" }
   | { kind: "digest" }
-  | { kind: "post_on_web" }
-  | { kind: "done" }
-  | { kind: "connected" };
+  | { kind: "post_on_web" };
 
 export const SCOPE_TEXT: Record<Scope, string> = { today: "today", this_week: "this week" };
 
@@ -29,18 +27,27 @@ const FIXED: Record<Exclude<LabelSpec["kind"], "update" | "batch">, string> = {
   invite: "👋 INVITE",
   digest: "📬 DIGEST",
   post_on_web: "ℹ️ POST ON THE WEB",
-  done: "🎉 DONE", // written by the database (session end)
-  connected: "✅ CONNECTED", // reply to phone verification
 };
 
 // Everyone:      [😣 STRESSFUL · today]
 // List / several: [👥 CLOSE CIRCLE · STRESSFUL · today]
 // One friend:    [💌 JUST FOR YOU · STRESSFUL · today]
 // Scope is kept in the audience labels too, since FR-C2 says the scope is shown in labels.
-function updateLabel(mood: Mood, scope: Scope, audience: AudienceLabel): string {
+function updateLabel(mood: Mood | null, scope: Scope, audience: AudienceLabel): string {
+  const scopeText = SCOPE_TEXT[scope];
+  // Text-only check-in (no mood): drop the mood part, matching public.check_in_message.
+  if (!mood) {
+    switch (audience) {
+      case "everyone":
+        return scopeText;
+      case "close_circle":
+        return "👥 CLOSE CIRCLE";
+      case "just_for_you":
+        return "💌 JUST FOR YOU";
+    }
+  }
   const { emoji, label } = MOODS[mood];
   const moodText = label.toUpperCase();
-  const scopeText = SCOPE_TEXT[scope];
   switch (audience) {
     case "everyone":
       return `${emoji} ${moodText} · ${scopeText}`;
@@ -79,6 +86,10 @@ export const CATALOG_LABEL = new RegExp(
       `${alt(MOOD_EMOJI)} ${moodPart}`,
       `👥 CLOSE CIRCLE · ${moodPart}`,
       `💌 JUST FOR YOU · ${moodPart}`,
+      // text-only check-ins (no mood): scope alone, or the audience label by itself
+      alt(SCOPES),
+      escape("👥 CLOSE CIRCLE"),
+      escape("💌 JUST FOR YOU"),
       `📦 \\d+ UPDATES`,
       ...Object.values(FIXED).map(escape),
     ].join("|") +

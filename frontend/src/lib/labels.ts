@@ -3,7 +3,13 @@ import { moodInfo, scopeLabel } from "../types/moods";
 import type { AudienceLabel } from "../types/api";
 import type { Mood, Scope } from "../types/moods";
 
-export function checkInLabel(mood: Mood, scope: Scope, audience: AudienceLabel) {
+export function checkInLabel(mood: Mood | null, scope: Scope, audience: AudienceLabel) {
+  if (!mood) {
+    // Text-only check-in (no mood): drop the mood part.
+    if (audience === "close_circle") return "👥 CLOSE CIRCLE";
+    if (audience === "just_for_you") return "💌 JUST FOR YOU";
+    return scopeLabel(scope);
+  }
   const m = moodInfo(mood);
   if (audience === "close_circle") return `👥 CLOSE CIRCLE · ${m.word}`;
   if (audience === "just_for_you") return `💌 JUST FOR YOU · ${m.word}`;

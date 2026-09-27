@@ -102,7 +102,7 @@
 }
 .st-go:hover:not(:disabled) { box-shadow: 0 0 0 8px rgba(111, 224, 232, 0.16); }
 .st-go:active:not(:disabled) { transform: scale(0.97); }
-.st-go:disabled { cursor: progress; }
+.st-go:disabled { opacity: 0.5; cursor: default; }
 
 .st-friends {
   margin: 0;
@@ -301,6 +301,8 @@
   color: var(--on-space);
   line-height: 1.25;
 }
+.st-confirm__note { margin: 0 0 4px; text-align: center; font-size: 15px; color: var(--on-space-soft); }
+.st-send { margin-top: 4px; }
 
 .st-note {
   margin: 0;

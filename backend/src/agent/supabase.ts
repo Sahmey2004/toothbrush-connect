@@ -19,7 +19,6 @@ interface OutboxRow {
   kind: string;
   body: string;
   check_in_id: string | null;
-  effect: string | null;
 }
 
 export function createSupabaseOutbox(db: SupabaseClient): Outbox {
@@ -36,7 +35,6 @@ export function createSupabaseOutbox(db: SupabaseClient): Outbox {
           kind: r.kind,
           body: r.body,
           checkInId: r.check_in_id,
-          effect: r.effect,
         }),
       );
     },
@@ -72,7 +70,7 @@ export function createSupabaseOutbox(db: SupabaseClient): Outbox {
       return {
         id: c.id,
         authorName: author.data?.display_name ?? "A friend",
-        mood: c.mood as Mood,
+        mood: c.mood as Mood | null,
         scope: c.scope as Scope,
         text: c.text,
         audience: recipient.data.audience_label as AudienceLabel,
@@ -92,13 +90,8 @@ export function createSupabaseInbox(db: SupabaseClient): Inbox {
         p_reaction: msg.reaction,
       });
       if (error) throw new Error(`agent_handle_inbound: ${error.message}`);
-      const r = data as {
-        action: InboundResult["action"];
-        user_id?: string;
-        names?: string[] | null;
-        display_name?: string | null;
-      };
-      return { action: r.action, userId: r.user_id ?? null, names: r.names ?? [], displayName: r.display_name ?? null };
+      const r = data as { action: InboundResult["action"]; user_id: string; names?: string[] | null };
+      return { action: r.action, userId: r.user_id, names: r.names ?? [] };
     },
   };
 }
@@ -106,7 +99,7 @@ export function createSupabaseInbox(db: SupabaseClient): Inbox {
 export function createSupabaseContacts(db: SupabaseClient): ContactDirectory {
   return {
     async listPhones() {
-      const ids = await db.from("channel_identities").select("user_id, address").eq("channel", "imessage");
+      const ids = await db.from("channel_identities").select("user_id, address, verified_at").eq("channel", "imessage");
       if (ids.error) throw new Error(`channel_identities: ${ids.error.message}`);
       const userIds = [...new Set(ids.data.map((r) => r.user_id as string))];
       const names = userIds.length
@@ -114,7 +107,11 @@ export function createSupabaseContacts(db: SupabaseClient): ContactDirectory {
         : { data: [], error: null };
       if (names.error) throw new Error(`profiles: ${names.error.message}`);
       const byId = new Map(names.data.map((p) => [p.id as string, (p.display_name as string | null) ?? null]));
-      return ids.data.map((r) => ({ phone: r.address as string, name: byId.get(r.user_id as string) ?? null }));
+      return ids.data.map((r) => ({
+        phone: r.address as string,
+        name: byId.get(r.user_id as string) ?? null,
+        verified: r.verified_at !== null,
+      }));
     },
   };
 }

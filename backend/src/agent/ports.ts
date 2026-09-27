@@ -10,10 +10,9 @@ export interface OutboxMessage {
   userId: string;
   channel: Channel;
   address: string;
-  kind: string; // check_in, reaction, reply, invite, done, welcome, …
+  kind: string; // check_in, reaction, reply, invite, done, …
   body: string; // text written by the database
   checkInId: string | null;
-  effect?: string | null; // iMessage effect, e.g. "confetti" on DONE
 }
 
 export type SendReport = { ok: true; providerMessageId: string } | { ok: false; error: string };
@@ -22,7 +21,7 @@ export type SendReport = { ok: true; providerMessageId: string } | { ok: false; 
 export interface DeliverableCheckIn {
   id: string;
   authorName: string;
-  mood: Mood;
+  mood: Mood | null; // null = a text-only check-in (no mood/emoji)
   scope: Scope;
   text: string | null;
   audience: AudienceLabel;
@@ -48,19 +47,12 @@ export type InboundAction =
   | "replied" // "> text" reply, recorded (the author's notice is queued)
   | "no_update_to_reply"
   | "ignored" // opted out, or a tapback on something that isn't a check-in
-  | "help" // anything else
-  // "Verify 123456" from the website's phone check (migration 0006)
-  | "verified" // number linked to the account
-  | "code_unknown"
-  | "code_expired"
-  | "phone_mismatch" // code texted from a different number than the one entered
-  | "phone_taken"; // number already verified on another account
+  | "help"; // anything else
 
 export interface InboundResult {
   action: InboundAction;
-  userId: string | null; // null for "code_unknown": the code matched nobody
-  names: string[]; // inviters for "joined", friends for "verified"
-  displayName?: string | null; // for "verified"
+  userId: string;
+  names: string[]; // inviters, for "joined"
 }
 
 export interface Inbox {
@@ -73,10 +65,10 @@ export interface Inbox {
   }): Promise<InboundResult>;
 }
 
-// Phone numbers the agent should be able to message: iMessage rows of `channel_identities`, invited friends
-// included.
+// Phone numbers the agent should be able to message: iMessage rows of `channel_identities`. `verified` means
+// the user proved the number (phone sign-in, or texted the line); invited friends aren't verified yet.
 export interface ContactDirectory {
-  listPhones(): Promise<{ phone: string; name: string | null }[]>;
+  listPhones(): Promise<{ phone: string; name: string | null; verified: boolean }[]>;
 }
 
 // The provider's list of allowed numbers (Photon project Users). True if the phone was newly added.

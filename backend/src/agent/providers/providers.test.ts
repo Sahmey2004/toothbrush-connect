@@ -42,24 +42,9 @@ describe("toInboundEvent", () => {
     expect(e).toMatchObject({ type: "reaction", emoji: "❤️", targetMessageId: "spc-msg-ours" });
   });
 
-  it("maps a threaded text reply to a '>' reply to our message", () => {
-    const e = toInboundEvent(
-      msg({ content: { type: "reply", content: { type: "text", text: "call me!" }, target: { id: "spc-msg-ours" } } }),
-    );
-    expect(e).toEqual({
-      type: "text",
-      channel: "imessage",
-      from: "+17634060903",
-      messageId: "spc-msg-1",
-      text: ">call me!",
-      replyTo: "spc-msg-ours",
-    });
-  });
-
   it("ignores outbound echoes and other content", () => {
     expect(toInboundEvent(msg({ direction: "outbound", content: { type: "text", text: "hi" } }))).toBeNull();
     expect(toInboundEvent(msg({ content: { type: "attachment" } }))).toBeNull();
-    expect(toInboundEvent(msg({ content: { type: "reply", content: { type: "attachment" }, target: { id: "x" } } }))).toBeNull();
   });
 });
 

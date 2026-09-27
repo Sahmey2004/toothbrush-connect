@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MOODS, type Mood, type Scope } from "../../domain/moods.js";
 import { CATALOG_LABEL, label, type AudienceLabel } from "./labels.js";
@@ -7,7 +5,6 @@ import {
   renderBatch,
   renderBrushingNow,
   renderCode,
-  renderCodeProblem,
   renderDigest,
   renderEdited,
   renderInvite,
@@ -20,8 +17,6 @@ import {
   renderReaction,
   renderReply,
   renderUpdate,
-  renderVerified,
-  type CodeProblem,
   type UpdateItem,
 } from "./messages.js";
 
@@ -75,38 +70,6 @@ describe("FR-D3 lint: every template starts with a catalog label and ends with a
     expect(msg.endsWith(` → ${LINK}`)).toBe(true);
     expect(msg.match(/https?:\/\//g)).toHaveLength(1);
   });
-});
-
-describe("phone verification replies: label first, no link", () => {
-  const problems: CodeProblem[] = ["code_unknown", "code_expired", "phone_mismatch", "phone_taken"];
-  const replies: [string, string][] = [
-    ["verified", renderVerified({ displayName: "Hwaejin", friendNames: ["Sahmey", "Roy", "Florence"] })],
-    ["verified, no friends", renderVerified({ displayName: null, friendNames: [] })],
-    ...problems.map((p): [string, string] => [p, renderCodeProblem(p)]),
-  ];
-
-  it.each(replies)("%s", (_, msg) => {
-    expect(msg).toMatch(CATALOG_LABEL);
-    expect(msg).not.toMatch(/https?:\/\//);
-  });
-
-  it("name the first two friends and count the rest", () => {
-    expect(replies[0][1]).toBe(
-      "[✅ CONNECTED] You're all set, Hwaejin! Updates from Sahmey, Roy and 1 more will land here. Text STOP any time.",
-    );
-    expect(replies[1][1]).toBe("[✅ CONNECTED] You're all set! Friends' updates will land here. Text STOP any time.");
-  });
-});
-
-describe("FR-D3 lint: messages the database writes start with a catalog label", () => {
-  const dir = join(import.meta.dirname, "../../../supabase/migrations");
-  const sql = readdirSync(dir)
-    .map((f) => readFileSync(join(dir, f), "utf8"))
-    .join("\n");
-  const starts = [...new Set([...sql.matchAll(/'(\[[^\]']+\] )/g)].map((m) => m[1]))];
-
-  it("finds the database's message templates", () => expect(starts.length).toBeGreaterThanOrEqual(5));
-  it.each(starts)("%s", (start) => expect(`${start}x`).toMatch(CATALOG_LABEL));
 });
 
 describe("labels", () => {

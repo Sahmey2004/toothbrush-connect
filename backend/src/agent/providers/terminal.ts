@@ -12,10 +12,9 @@ export function createTerminalProvider(
   return {
     channel: "imessage",
 
-    async send(address, text, options) {
+    async send(address, text) {
       const providerMessageId = `terminal-${randomUUID()}`;
-      const effect = options?.effect ? `, ${options.effect}` : "";
-      out.write(`\n→ ${address} (${providerMessageId}${effect})\n${text}\n`);
+      out.write(`\n→ ${address} (${providerMessageId})\n${text}\n`);
       return { providerMessageId };
     },
 

@@ -7,15 +7,7 @@ export interface SendResult {
 }
 
 export type InboundEvent =
-  | {
-      type: "text";
-      channel: Channel;
-      from: string;
-      messageId: string;
-      text: string;
-      // Set for a threaded reply: id of our outbound message it answers (text is then "> …").
-      replyTo?: string;
-    }
+  | { type: "text"; channel: Channel; from: string; messageId: string; text: string }
   | {
       type: "reaction";
       channel: Channel;
@@ -28,9 +20,8 @@ export type InboundEvent =
 
 export interface MessagingProvider {
   readonly channel: Channel;
-  // Throws RecipientNotReachable when the provider refuses the address (don't retry). Providers without effects
-  // ignore `effect` (e.g. "confetti" on DONE).
-  send(address: string, text: string, options?: { effect?: string | null }): Promise<SendResult>;
+  // Throws RecipientNotReachable when the provider refuses the address (don't retry).
+  send(address: string, text: string): Promise<SendResult>;
   // Inbound events until stop() is called.
   inbound(): AsyncIterable<InboundEvent>;
   stop(): Promise<void>;

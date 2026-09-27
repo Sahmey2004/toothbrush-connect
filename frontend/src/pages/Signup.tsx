@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { signInWithGoogle } from "../lib/auth";
+import { savePendingPhone } from "../lib/pendingPhone";
 import "../styles/pop.css";
 
 /* The phone-first sign-up flow, in the pop identity. Three screens — phone, name & channel,
@@ -120,10 +121,10 @@ export function SignupPhone() {
       <h1 className="signup__title">What's your<br />number?</h1>
       <BlobFaces />
       <p className="signup__lede">
-        We will send a sign-in code by iMessage, or by text if you do not use iMessage.
+        Add your number so friends' updates can reach you by iMessage or text. Optional — you can add it later in Profile.
       </p>
       <div className="signup__field">
-        <label className="signup__label" htmlFor="phone">Phone number</label>
+        <label className="signup__label" htmlFor="phone">Phone number <span className="signup__optional">(optional)</span></label>
         <div className="signup__phone-row">
           <span className="signup__cc">+1</span>
           <input
@@ -146,10 +147,10 @@ export function SignupPhone() {
         <button
           type="button"
           className="signup__btn signup__btn--primary"
-          disabled={!phone.trim() || !agreed}
+          disabled={!agreed}
           onClick={next}
         >
-          Send code
+          Continue
         </button>
       </div>
     </SignupShell>
@@ -226,7 +227,11 @@ export function SignupInvite() {
   const [error, setError] = useState<string | null>(null);
 
   // Sign-in is Google through Supabase — the app's single login. Return to "/" afterwards.
+  // If a phone was entered earlier, stash it so it survives the OAuth redirect; BrushLayout
+  // saves it with set_my_phone once signed in. It's optional — no phone, nothing stashed.
   const finish = async () => {
+    const phone = (prev.phone || "").trim();
+    if (phone) savePendingPhone(phone);
     const err = await signInWithGoogle("/");
     if (err) setError(err);
   };

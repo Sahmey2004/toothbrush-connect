@@ -104,8 +104,7 @@ select public.post_check_in('just_okay');
 select public.undo_check_in((select id from public.check_ins where status = 'held'));
 reset role;
 select public.run_due_jobs();
-select pg_temp.check((select count(*) from public.check_ins
-  where status = 'undone' and user_id = (select profile from ids where name = 'priya')) = 1, 'undone stays undone');
+select pg_temp.check((select count(*) from public.check_ins where status = 'undone') = 1, 'undone stays undone');
 
 -- Outbox: invite texts and check-in texts with catalog labels.
 select pg_temp.check((select count(*) from public.outbound_messages where kind = 'invite') = 3, 'three invite texts queued');

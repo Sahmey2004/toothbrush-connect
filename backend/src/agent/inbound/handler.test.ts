@@ -30,26 +30,6 @@ describe("inbound handler", () => {
     expect(sent[0].text).toMatch(/^\[👋 INVITE\] You're in Sahmey's circle\./);
   });
 
-  it("answers a phone verification with ✅ CONNECTED, naming friends, without a link", async () => {
-    const { handle, sent } = setup({ action: "verified", displayName: "Hwaejin", names: ["Sahmey"] });
-    await handle(text("Verify 123456"));
-    expect(sent[0].text).toBe(
-      "[✅ CONNECTED] You're all set, Hwaejin! Updates from Sahmey will land here. Text STOP any time.",
-    );
-  });
-
-  it("explains a verification code that didn't work", async () => {
-    const { handle, sent } = setup({ action: "phone_mismatch" });
-    await handle(text("Verify 123456"));
-    expect(sent[0].text).toMatch(/^\[🔑 CODE\] That code is for a different number\./);
-  });
-
-  it("passes a threaded reply's target to the database", async () => {
-    const { handle, handled } = setup({ action: "replied" });
-    await handle({ type: "text", channel: "imessage", from: ME, messageId: "m", text: ">call me!", replyTo: "spc-msg-2" });
-    expect(handled[0]).toMatchObject({ text: ">call me!", replyTo: "spc-msg-2", reaction: null });
-  });
-
   it("maps a tapback to the reaction name and the id of our message", async () => {
     const { handle, sent, handled } = setup({ action: "reacted" });
     await handle({ type: "reaction", channel: "imessage", from: ME, messageId: "r", emoji: "😂", targetMessageId: "spc-msg-1" });

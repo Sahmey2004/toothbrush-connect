@@ -1,6 +1,5 @@
 // In-memory ports for tests and dev.ts. The outbox mirrors claim_outbound / complete_outbound in
-// supabase/migrations/20260926000002_functions.sql, as changed by 20260926000008_outbox_claim_lease.sql. It has
-// no clock, so claims never lapse.
+// supabase/migrations/20260926000002_functions.sql.
 import type { DeliverableCheckIn, Inbox, InboundResult, LinkBuilder, Outbox, OutboxMessage } from "./ports.js";
 import type { MessagingProvider, SendResult } from "./providers/types.js";
 
@@ -23,17 +22,12 @@ export function createMemoryOutbox(checkIns: Record<string, DeliverableCheckIn> 
       }
       return due.map(({ status, attempts, providerMessageId, error, ...m }) => m);
     },
-    // A success is recorded once, even on a message that was released or failed; a failure only while the
-    // message is still out for sending.
     async complete(id, report) {
       const r = rows.find((x) => x.id === id)!;
       if (report.ok) {
-        if (r.status === "sent") return;
         r.status = "sent";
         r.providerMessageId = report.providerMessageId;
-        r.error = undefined;
       } else {
-        if (r.status !== "sending") return;
         r.status = r.attempts >= 3 ? "failed" : "pending";
         r.error = report.error;
       }
@@ -69,14 +63,14 @@ export function createFakeInbox(decide: (text: string, reaction: string | null) 
 
 // Records sends; `fail` decides per address whether a send throws.
 export function createFakeProvider(fail: (address: string) => Error | null = () => null) {
-  const sent: { address: string; text: string; effect?: string }[] = [];
+  const sent: { address: string; text: string }[] = [];
   let n = 0;
   const provider: MessagingProvider = {
     channel: "imessage",
-    async send(address, text, options): Promise<SendResult> {
+    async send(address, text): Promise<SendResult> {
       const error = fail(address);
       if (error) throw error;
-      sent.push({ address, text, ...(options?.effect ? { effect: options.effect } : {}) });
+      sent.push({ address, text });
       return { providerMessageId: `fake-${++n}` };
     },
     async *inbound() {},

@@ -1,16 +1,14 @@
-// Inbound texts and tapbacks. The database's agent_handle_inbound does the work ("Verify 123456" phone checks,
-// STOP / START, YES to accept invites, tapbacks and "> replies" recorded as reactions); this answers with the
-// right message. Inbound text never creates a check-in (FR-C7).
+// Inbound texts and tapbacks. The database's agent_handle_inbound does the work (STOP / START, YES to accept
+// invites, tapbacks and "> replies" recorded as reactions); this answers with the right message. Inbound text
+// never creates a check-in (FR-C7).
 import type { Inbox, InboundResult, LinkBuilder } from "../ports.js";
 import type { InboundEvent, MessagingProvider } from "../providers/types.js";
 import {
-  renderCodeProblem,
   renderJoined,
   renderNothingPending,
   renderPostOnWeb,
   renderStarted,
   renderStopped,
-  renderVerified,
 } from "../templates/messages.js";
 
 // FR-D5: at most one auto-reply per user per 12 hours.
@@ -35,7 +33,7 @@ export interface InboundDeps {
 
 export function createInboundHandler({ provider, inbox, links, now = Date.now }: InboundDeps) {
   // In memory: a restart can allow one extra auto-reply, which is fine.
-  const lastAutoReply = new Map<string | null, number>();
+  const lastAutoReply = new Map<string, number>();
   const home = links.page("/timeline");
 
   function replyFor(r: InboundResult): string | null {
@@ -48,13 +46,6 @@ export function createInboundHandler({ provider, inbox, links, now = Date.now }:
         return renderJoined({ inviterNames: r.names }, home);
       case "nothing_pending":
         return renderNothingPending(links.page("/circle"));
-      case "verified":
-        return renderVerified({ displayName: r.displayName, friendNames: r.names });
-      case "code_unknown":
-      case "code_expired":
-      case "phone_mismatch":
-      case "phone_taken":
-        return renderCodeProblem(r.action);
       case "help":
       case "no_update_to_reply": {
         const last = lastAutoReply.get(r.userId);
@@ -73,7 +64,7 @@ export function createInboundHandler({ provider, inbox, links, now = Date.now }:
   return async function handleInbound(event: InboundEvent): Promise<string | null> {
     const result = await inbox.handle(
       event.type === "text"
-        ? { channel: event.channel, from: event.from, text: event.text, replyTo: event.replyTo ?? null, reaction: null }
+        ? { channel: event.channel, from: event.from, text: event.text, replyTo: null, reaction: null }
         : {
             channel: event.channel,
             from: event.from,

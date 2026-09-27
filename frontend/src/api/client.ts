@@ -3,7 +3,7 @@
 import { supabase } from "../lib/supabase";
 import type { Mood, Scope } from "../types/moods";
 import type {
-  Audience, BrushSession, CheckIn, CircleMember, FeedItem, FriendList, Me, Reaction, ReactionKind, Settings,
+  Audience, BrushSession, CheckIn, CircleMember, FeedItem, FriendList, Me, Reaction, ReactionKind, ReceivedReaction, Settings,
 } from "../types/api";
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -33,6 +33,8 @@ export const api = {
     const { error } = await supabase.from("profiles").update({ display_name: name.trim() }).eq("id", userId);
     if (error) throw new Error(error.message);
   },
+  // Save the number friends' updates are texted to. An empty string removes it.
+  setMyPhone: (phone: string) => rpc<Me>("set_my_phone", { p_phone: phone }),
   exportData: () => rpc<unknown>("export_my_data"),
   deleteAccount: () => rpc<void>("delete_my_account"),
 
@@ -50,7 +52,7 @@ export const api = {
   runDueJobs: () => rpc<void>("run_due_jobs"),
 
   // Check-ins
-  postCheckIn: (mood: Mood, scope: Scope, text: string, audience?: Audience | null) =>
+  postCheckIn: (mood: Mood | null, scope: Scope, text: string, audience?: Audience | null) =>
     rpc<CheckIn>("post_check_in", { p_mood: mood, p_scope: scope, p_text: text || null, ...audienceArgs(audience) }),
   setAudience: (id: string, audience: Audience, makeDefault = false) =>
     rpc<CheckIn>("set_check_in_audience", { p_id: id, ...audienceArgs(audience), p_make_default: makeDefault }),
@@ -98,6 +100,8 @@ export const api = {
   // Reactions
   react: (checkInId: string, kind: ReactionKind, text?: string) =>
     rpc<Reaction>("send_reaction", { p_check_in: checkInId, p_kind: kind, p_text: text ?? null }),
+  // Replies and reactions friends sent to my updates, newest first, with their names.
+  myReactions: (days = 14) => rpc<ReceivedReaction[]>("get_my_reactions", { p_days: days }),
 
   // Lists (RLS: owner only)
   lists: async () => {
@@ -136,26 +140,3 @@ export const api = {
     }
   },
 };
-
-// ── Phone verification (backend/supabase/functions/phone-connect) ─────────────────────────────
-
-export interface PhoneStart {
-  phone: string;
-  code: string;
-  link: string | null;         // opens Messages with "Verify 123456" filled in; null in dry-run
-  line_number: string | null;
-  dry_run: boolean;
-}
-
-export async function startPhoneVerification(phone: string): Promise<PhoneStart> {
-  const { data, error } = await supabase.functions.invoke("phone-connect", { body: { phone } });
-  if (error) {
-    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
-    throw new Error(body?.error ?? "Couldn't start verification. Try again.");
-  }
-  return data as PhoneStart;
-}
-
-/** Same link the function returns, rebuilt from get_me after a reload. */
-export const photonVerifyLink = (photonUserId: string, code: string) =>
-  `https://spectrum.photon.codes/users/${photonUserId}/redirect?msg=${encodeURIComponent(`Verify ${code}`)}`;

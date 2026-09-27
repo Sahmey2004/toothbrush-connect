@@ -189,7 +189,9 @@ export default function Brush() {
     action = (
       <div className="composer composer--done">
         {checkIn && checkIn.status !== "undone" && (
-          <p className="composer__status">You posted {moodInfo(checkIn.mood).emoji} {moodInfo(checkIn.mood).label}.</p>
+          <p className="composer__status">
+            {checkIn.mood ? `You posted ${moodInfo(checkIn.mood).emoji} ${moodInfo(checkIn.mood).label}.` : "You posted a note."}
+          </p>
         )}
         <button className="btn btn--primary btn--big" onClick={() => { dismissFinished(); setCheckIn(null); }}>Done</button>
       </div>
@@ -200,10 +202,10 @@ export default function Brush() {
         onUndo={undo} onChoose={() => setSheet("hold")} />
     );
   } else if (checkIn?.status === "delivered") {
-    const m = moodInfo(checkIn.mood);
+    const m = checkIn.mood ? moodInfo(checkIn.mood) : null;
     action = (
       <section className="sent">
-        <p className="label">[✅ POSTED · {m.word}]</p>
+        <p className="label">[✅ POSTED{m ? ` · ${m.word}` : ""}]</p>
         <p className="sent__line">
           Sent to {recipients === null ? "your circle" : `${recipients} ${recipients === 1 ? "friend" : "friends"}`}.
         </p>

@@ -19,11 +19,7 @@ const { outbox, enqueue } = createMemoryOutbox({
     audience: "everyone",
   },
 });
-enqueue(
-  welcome
-    ? { userId: "dev-recipient", channel: "imessage", address: phone, kind: "welcome", body: "", checkInId: null }
-    : { userId: "dev-recipient", channel: "imessage", address: phone, kind: "check_in", body: "", checkInId: "dev-check-in" },
-);
+enqueue({ userId: "dev-recipient", channel: "imessage", address: phone, kind: "check_in", body: "", checkInId: "dev-check-in" });
 
 const agent = createAgent({
   provider: await createProvider(),
@@ -32,7 +28,8 @@ const agent = createAgent({
   links: createFixedLinks(),
 });
 try {
-  await agent.drain();
+  if (welcome) await agent.sendWelcome(phone);
+  else await agent.drain();
 } finally {
   await agent.stop();
 }

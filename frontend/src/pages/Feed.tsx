@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
+import { PopReplies } from "../components/feed/PopReplies";
 import { usePresence } from "../hooks/usePresence";
 import { checkInLabel, timeAgo } from "../lib/labels";
 import type { FeedItem, ReactionKind } from "../types/api";
@@ -89,6 +90,7 @@ export default function Feed() {
         <h1 className="pop-feed__title">Updates</h1>
         <p className="pop-feed__sub">The last 14 days from your circle.</p>
       </header>
+      {me && <PopReplies myId={me.id} />}
       {loaded && feed.length === 0 && (
         <p className="pop-empty">No updates yet.<br />They'll land here after your friends brush. 🌙</p>
       )}

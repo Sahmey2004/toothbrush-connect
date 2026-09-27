@@ -8,11 +8,11 @@ export function HoldBanner({ checkIn, audienceLabel, onUndo, onChoose, busy }: {
 }) {
   const left = useCountdown(checkIn.deliver_at);
   const secs = Math.ceil(left / 1000);
-  const m = moodInfo(checkIn.mood);
+  const m = checkIn.mood ? moodInfo(checkIn.mood) : null;
   return (
     <section className="hold" aria-live="polite">
       <div className="hold__fill" style={{ transform: `scaleX(${left / 30_000})` }} aria-hidden />
-      <p className="hold__label">✅ POSTED · {m.word}</p>
+      <p className="hold__label">✅ POSTED{m ? ` · ${m.word}` : ""}</p>
       <p className="hold__line">
         {secs > 0 ? <>Sending to {audienceLabel} in {secs}s</> : <>Sending to {audienceLabel}…</>}
       </p>

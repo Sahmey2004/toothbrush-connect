@@ -18,21 +18,12 @@ export interface Settings {
   onboarded_at: string | null;
 }
 
-export interface PhoneVerification {
-  phone: string;
-  code: string;
-  photon_user_id: string | null;
-  line_number: string | null;
-  expires_at: string;
-}
-
 export interface Me {
   id: string;
   display_name: string;
   status: "guest" | "active";
   email: string | null;
-  phone: string | null;                        // verified number that gets iMessages
-  phone_verification: PhoneVerification | null; // started but not yet texted back
+  phone: string | null;
   settings: Settings;
 }
 
@@ -50,7 +41,7 @@ export interface CheckIn {
   id: string;
   user_id: string;
   session_id: string | null;
-  mood: Mood;
+  mood: Mood | null;
   scope: Scope;
   text: string | null;
   audience_type: AudienceType;
@@ -73,7 +64,7 @@ export interface FeedItem {
   check_in_id: string;
   author_id: string;
   author_name: string;
-  mood: Mood;
+  mood: Mood | null;
   scope: Scope;
   text: string | null;
   audience_label: AudienceLabel;
@@ -112,5 +103,18 @@ export interface Reaction {
   check_in_id: string | null;
   kind: ReactionKind;
   text: string | null;
+  created_at: string;
+}
+
+// A reply or reaction a friend sent to one of my updates (public.get_my_reactions).
+export interface ReceivedReaction {
+  id: string;
+  from_user: string;
+  from_name: string;
+  kind: ReactionKind;
+  text: string | null;
+  check_in_id: string | null;
+  check_in_mood: Mood | null;
+  check_in_text: string | null;
   created_at: string;
 }
